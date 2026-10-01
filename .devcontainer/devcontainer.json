@@ -1,0 +1,48 @@
+{
+  "name": "sposticast",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:24-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // node_modules in un volume dedicato: install e watcher molto più veloci
+  // rispetto al bind mount, e niente conflitti con i binari nativi dell'host.
+  "mounts": [
+    "source=sposticast-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    "source=sposticast-playwright,target=/home/node/.cache/ms-playwright,type=volume"
+  ],
+
+  "containerEnv": {
+    "NX_DAEMON": "true",
+    "NX_NO_CLOUD": "true"
+  },
+
+  "postCreateCommand": "sudo chown -R node:node node_modules /home/node/.cache && npm ci && npx playwright install --with-deps chromium",
+
+  "forwardPorts": [4200, 4300, 6006],
+  "portsAttributes": {
+    "4200": { "label": "Vite dev server", "onAutoForward": "notify" },
+    "4300": { "label": "Vite preview", "onAutoForward": "silent" },
+    "6006": { "label": "Storybook", "onAutoForward": "notify" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "nrwl.angular-console",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "vitest.explorer",
+        "ms-playwright.playwright"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "typescript.tsdk": "node_modules/typescript/lib"
+      }
+    }
+  },
+
+  "remoteUser": "node"
+}
