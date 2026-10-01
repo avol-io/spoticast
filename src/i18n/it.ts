@@ -16,6 +16,7 @@ export const it: Dictionary = {
       "La riproduzione nell'app richiede Spotify Premium. Finché l'app è in Development Mode su Spotify, possono accedere solo gli utenti autorizzati.",
     missingClientId:
       'VITE_SPOTIFY_CLIENT_ID non è impostato. Copia .env.example in .env e compilalo.',
+    redirectUriHint: 'Redirect URI da registrare nella Dashboard Spotify:',
     callbackWorking: 'Accesso in corso…',
     callbackError: 'Accesso non riuscito: {{message}}',
     backToLogin: "Torna all'accesso",

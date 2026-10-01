@@ -52,6 +52,18 @@ export function clientId(): string {
   return import.meta.env.VITE_SPOTIFY_CLIENT_ID ?? '';
 }
 
+/**
+ * Spotify rejects "localhost" redirect URIs and requires an exact match, so
+ * an app opened on localhost (e.g. through VS Code port forwarding) must move
+ * to 127.0.0.1 before logging in. Returns the URL to move to, or null.
+ */
+export function loopbackUrl(href: string): string | null {
+  const url = new URL(href);
+  if (url.hostname !== 'localhost') return null;
+  url.hostname = '127.0.0.1';
+  return url.toString();
+}
+
 export function redirectUri(): string {
   return new URL(
     `${import.meta.env.BASE_URL}callback`,

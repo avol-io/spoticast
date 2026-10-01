@@ -3,6 +3,7 @@ import {
   codeChallenge,
   generateCodeVerifier,
   getAccessToken,
+  loopbackUrl,
   useAuth,
 } from './auth';
 
@@ -78,5 +79,18 @@ describe('getAccessToken', () => {
     );
     await expect(getAccessToken()).rejects.toThrow('invalid_grant');
     expect(useAuth.getState().tokens).toBeNull();
+  });
+});
+
+describe('loopbackUrl', () => {
+  it('moves localhost to 127.0.0.1 keeping port, path and query', () => {
+    expect(loopbackUrl('http://localhost:4200/podcast/1?x=1')).toBe(
+      'http://127.0.0.1:4200/podcast/1?x=1',
+    );
+  });
+
+  it('leaves other hosts alone', () => {
+    expect(loopbackUrl('http://127.0.0.1:4200/')).toBeNull();
+    expect(loopbackUrl('https://spoticast.it/')).toBeNull();
   });
 });

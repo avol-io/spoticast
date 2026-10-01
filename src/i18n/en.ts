@@ -14,6 +14,7 @@ export const en = {
       'Playback inside the app requires Spotify Premium. While the app is in Spotify Development Mode, only users added to its allow-list can log in.',
     missingClientId:
       'VITE_SPOTIFY_CLIENT_ID is not set. Copy .env.example to .env and fill it in.',
+    redirectUriHint: 'Redirect URI to register in the Spotify Dashboard:',
     callbackWorking: 'Logging you in…',
     callbackError: 'Login failed: {{message}}',
     backToLogin: 'Back to login',

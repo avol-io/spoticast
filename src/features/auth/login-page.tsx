@@ -1,7 +1,7 @@
 import { LogIn } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { clientId, login } from '../../lib/spotify/auth';
+import { clientId, login, redirectUri } from '../../lib/spotify/auth';
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -36,6 +36,14 @@ export function LoginPage() {
         </p>
       )}
       <p className="max-w-sm text-xs text-fg-subtle">{t('auth.premiumNote')}</p>
+      {import.meta.env.DEV && (
+        <p className="max-w-sm text-xs text-fg-subtle">
+          {t('auth.redirectUriHint')}{' '}
+          <code className="rounded bg-surface-2 px-1.5 py-0.5 text-fg select-all">
+            {redirectUri()}
+          </code>
+        </p>
+      )}
     </div>
   );
 }
