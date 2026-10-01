@@ -72,7 +72,8 @@ export default defineConfig(({ mode }) => {
           runtimeCaching: [
             {
               // Cover art from Spotify's image CDN.
-              urlPattern: /^https:\/\/(i|mosaic|image-cdn-[a-z]+)\.scdn\.co\//,
+              urlPattern:
+                /^https:\/\/([a-z0-9-]+\.scdn\.co|[a-z0-9-]+\.spotifycdn\.com)\/image\//,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'spotify-images',

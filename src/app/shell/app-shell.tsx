@@ -1,4 +1,5 @@
 import { Outlet, ScrollRestoration } from 'react-router-dom';
+import Toaster from '../ui/toaster';
 import BottomNav from './bottom-nav';
 import Sidebar from './sidebar';
 
@@ -15,8 +16,11 @@ export function AppShell() {
       <main className="pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-8">
         <Outlet />
       </main>
-      <div className="fixed inset-x-0 bottom-0 z-30 lg:hidden">
-        <BottomNav />
+      <div className="fixed inset-x-0 bottom-0 z-30 lg:left-60">
+        <Toaster />
+        <div className="lg:hidden">
+          <BottomNav />
+        </div>
       </div>
       <ScrollRestoration />
     </div>

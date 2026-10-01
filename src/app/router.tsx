@@ -7,6 +7,7 @@ import CallbackPage from '../features/auth/callback-page';
 import RequireAuth from '../features/auth/require-auth';
 import FiltersPage from '../features/filters/filters-page';
 import HomePage from '../features/home/home-page';
+import PodcastPage from '../features/podcast/podcast-page';
 import QueuePage from '../features/queue/queue-page';
 import SearchPage from '../features/search/search-page';
 import SettingsPage from '../features/settings/settings-page';
@@ -22,6 +23,7 @@ export const routes: RouteObject[] = [
     ),
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'podcast/:showId', element: <PodcastPage /> },
       { path: 'filters', element: <FiltersPage /> },
       { path: 'queue', element: <QueuePage /> },
       { path: 'search', element: <SearchPage /> },
@@ -35,5 +37,14 @@ export const routes: RouteObject[] = [
 export const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 
 export function createAppRouter() {
-  return createBrowserRouter(routes, { basename });
+  return createBrowserRouter(routes, {
+    basename,
+    future: {
+      v7_fetcherPersist: true,
+      v7_normalizeFormMethod: true,
+      v7_partialHydration: true,
+      v7_relativeSplatPath: true,
+      v7_skipActionErrorRevalidation: true,
+    },
+  });
 }
