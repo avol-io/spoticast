@@ -31,6 +31,6 @@ export const useSettings = create<SettingsState>()(
         set({ skipBackSeconds, skipForwardSeconds }),
       setChartsMarket: (chartsMarket) => set({ chartsMarket }),
     }),
-    { name: 'sposticast.settings', version: 1 },
+    { name: 'spoticast.settings', version: 1 },
   ),
 );

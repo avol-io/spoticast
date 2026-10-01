@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Sposticast is an installable PWA that acts as a Pocket Casts–style client for Spotify podcasts. It is a React 19 single-page app in an **Nx standalone workspace** (one project, `sposticast`, rooted at the repo root — no `apps/` or `libs/` folders). The bundler is Vite (with `vite-plugin-pwa`), styling uses Tailwind CSS v4, routing uses React Router 6 data routers, tests run on Vitest with jsdom, and Storybook 10 is configured. There is no backend: Spotify auth is OAuth PKCE in the browser, and the app is deployed statically to GitHub Pages.
+Spoticast is an installable PWA that acts as a Pocket Casts–style client for Spotify podcasts. It is a React 19 single-page app in an **Nx standalone workspace** (one project, `spoticast`, rooted at the repo root — no `apps/` or `libs/` folders). The bundler is Vite (with `vite-plugin-pwa`), styling uses Tailwind CSS v4, routing uses React Router 6 data routers, tests run on Vitest with jsdom, and Storybook 10 is configured. There is no backend: Spotify auth is OAuth PKCE in the browser, and the app is deployed statically to GitHub Pages.
 
 ## Commands
 
-Every task is an Nx target, run with `npx nx <target> sposticast` (or just `npx nx <target>`, since `sposticast` is the default project). `project.json` defines no targets: Nx plugins in `nx.json` infer them from `vite.config.mts`, `eslint.config.mjs` and `.storybook/`. To list them, run `npx nx show project sposticast`.
+Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx nx <target>`, since `spoticast` is the default project). `project.json` defines no targets: Nx plugins in `nx.json` infer them from `vite.config.mts`, `eslint.config.mjs` and `.storybook/`. To list them, run `npx nx show project spoticast`.
 
 | Task                                    | Command                                          |
 | --------------------------------------- | ------------------------------------------------ |
 | Dev server (http://127.0.0.1:4200)      | `npx nx serve`                                   |
-| Production build (to `dist/sposticast`) | `npx nx build`                                   |
+| Production build (to `dist/spoticast`) | `npx nx build`                                   |
 | Preview build (port 4300)               | `npx nx preview`                                 |
 | Lint (`eslint ./src`)                   | `npx nx lint`                                    |
 | Type-check (`tsc -p tsconfig.app.json`) | `npx nx typecheck`                               |
@@ -36,7 +36,7 @@ Every task is an Nx target, run with `npx nx <target> sposticast` (or just `npx 
   - `src/app/ui/`: shared UI primitives.
   - `src/features/<area>/`: pages and feature components.
   - `src/lib/spotify/`: Web API client and PKCE auth.
-  - `src/lib/storage/`: zustand stores persisted to localStorage under `sposticast.*` keys.
+  - `src/lib/storage/`: zustand stores persisted to localStorage under `spoticast.*` keys.
   - `src/i18n/`: typed `en`/`it` dictionaries; `en.ts` is the source of truth for keys.
 - Theming: color tokens are CSS variables in `src/styles.css`, exposed to Tailwind via `@theme inline` (`bg-surface`, `text-fg-muted`, `bg-brand`, …). Use them instead of raw colors. `data-theme` on `<html>` switches dark/light. `--accent` is overridden per screen with the cover's dominant color.
 - Spotify Web API: it follows the February 2026 Development Mode rules. Library writes go through `PUT`/`DELETE /me/library`, playlist contents through `/playlists/{id}/items`, search returns at most 10 results per page, and there are no batch fetch endpoints.

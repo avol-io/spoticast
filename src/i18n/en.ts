@@ -1,5 +1,5 @@
 export const en = {
-  appName: 'Sposticast',
+  appName: 'Spoticast',
   nav: {
     podcasts: 'Podcasts',
     filters: 'Filters',

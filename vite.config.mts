@@ -6,13 +6,13 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const outDir = './dist/sposticast';
+const outDir = './dist/spoticast';
 
 // GitHub Pages serves 404.html for unknown paths: copying the SPA shell there
 // lets deep links like /podcast/:id load the app instead of a GitHub 404.
 function spaFallback(): Plugin {
   return {
-    name: 'sposticast:spa-fallback',
+    name: 'spoticast:spa-fallback',
     apply: 'build',
     closeBundle() {
       const dir = resolve(import.meta.dirname, outDir);
@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
   return {
     root: import.meta.dirname,
     base,
-    cacheDir: './node_modules/.vite/sposticast',
+    cacheDir: './node_modules/.vite/spoticast',
     // Spotify rejects "localhost" redirect URIs: use the loopback IP instead.
     server: {
       port: 4200,
@@ -45,8 +45,8 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
         manifest: {
-          name: 'Sposticast',
-          short_name: 'Sposticast',
+          name: 'Spoticast',
+          short_name: 'Spoticast',
           description: 'Podcast client for Spotify',
           theme_color: '#0f1115',
           background_color: '#0f1115',
@@ -102,7 +102,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     test: {
-      name: 'sposticast',
+      name: 'spoticast',
       watch: false,
       globals: true,
       environment: 'jsdom',
@@ -110,7 +110,7 @@ export default defineConfig(({ mode }) => {
       include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
       reporters: ['default'],
       coverage: {
-        reportsDirectory: './coverage/sposticast',
+        reportsDirectory: './coverage/spoticast',
         provider: 'v8' as const,
       },
     },

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 const AUTHORIZE_URL = 'https://accounts.spotify.com/authorize';
 const TOKEN_URL = 'https://accounts.spotify.com/api/token';
-const PKCE_KEY = 'sposticast.pkce';
+const PKCE_KEY = 'spoticast.pkce';
 /** Refresh a minute early so in-flight requests never carry a stale token. */
 const EXPIRY_MARGIN_MS = 60_000;
 
@@ -40,7 +40,7 @@ export const useAuth = create<AuthState>()(
       tokens: null,
       setTokens: (tokens) => set({ tokens }),
     }),
-    { name: 'sposticast.auth', version: 1 },
+    { name: 'spoticast.auth', version: 1 },
   ),
 );
 

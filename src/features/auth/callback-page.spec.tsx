@@ -20,7 +20,7 @@ describe('CallbackPage', () => {
 
   it('exchanges the code and returns to the original page', async () => {
     localStorage.setItem(
-      'sposticast.pkce',
+      'spoticast.pkce',
       JSON.stringify({ verifier: 'v', state: 's1', returnTo: '/podcast/1' }),
     );
     vi.stubGlobal(

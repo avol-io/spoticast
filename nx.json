@@ -56,7 +56,7 @@
       }
     }
   ],
-  "defaultProject": "sposticast",
+  "defaultProject": "spoticast",
   "generators": {
     "@nx/react": {
       "application": {

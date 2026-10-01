@@ -1,5 +1,5 @@
 {
-  "name": "sposticast",
+  "name": "spoticast",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:24-bookworm",
 
   "features": {
@@ -9,8 +9,8 @@
   // node_modules in un volume dedicato: install e watcher molto più veloci
   // rispetto al bind mount, e niente conflitti con i binari nativi dell'host.
   "mounts": [
-    "source=sposticast-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
-    "source=sposticast-playwright,target=/home/node/.cache/ms-playwright,type=volume"
+    "source=spoticast-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    "source=spoticast-playwright,target=/home/node/.cache/ms-playwright,type=volume"
   ],
 
   "containerEnv": {
