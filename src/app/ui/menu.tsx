@@ -22,6 +22,7 @@ export interface MenuProps {
 /** Icon button that opens a small anchored list of actions. */
 export function Menu({ label, icon, items, title }: MenuProps) {
   const [open, setOpen] = useState(false);
+  const [upwards, setUpwards] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const id = useId();
 
@@ -46,7 +47,12 @@ export function Menu({ label, icon, items, title }: MenuProps) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // Near the bottom (rows above the mini player), open upwards.
+          const rect = rootRef.current?.getBoundingClientRect();
+          setUpwards(!!rect && rect.bottom > window.innerHeight - 340);
+          setOpen((o) => !o);
+        }}
       >
         {icon}
       </IconButton>
@@ -55,7 +61,7 @@ export function Menu({ label, icon, items, title }: MenuProps) {
           id={id}
           role="menu"
           aria-label={label}
-          className="absolute top-full right-0 z-40 mt-1 min-w-52 overflow-hidden rounded-2xl border border-border bg-surface-2 py-1.5 shadow-2xl"
+          className={`absolute right-0 z-40 min-w-56 ${upwards ? 'bottom-full mb-1' : 'top-full mt-1'} overflow-hidden rounded-2xl border border-border bg-surface-2 py-1.5 shadow-2xl`}
         >
           {title && (
             <p className="px-4 pt-1.5 pb-1 text-xs font-semibold tracking-wider text-fg-subtle uppercase">

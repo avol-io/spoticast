@@ -3,6 +3,8 @@ import { useAuth } from '../lib/spotify/auth';
 
 import App from './app';
 
+vi.mock('../features/player/player-runtime', () => ({ default: () => null }));
+
 describe('App', () => {
   afterEach(() => useAuth.setState({ tokens: null }));
 

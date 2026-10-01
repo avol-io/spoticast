@@ -3,6 +3,10 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 
 import AppShell from './app-shell';
 
+vi.mock('../../features/player/player-runtime', () => ({
+  default: () => null,
+}));
+
 describe('AppShell', () => {
   it('renders the routed page inside both navigations', () => {
     const router = createMemoryRouter([

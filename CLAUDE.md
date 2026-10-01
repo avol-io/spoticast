@@ -13,7 +13,7 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
 | Task                                    | Command                                          |
 | --------------------------------------- | ------------------------------------------------ |
 | Dev server (http://127.0.0.1:4200)      | `npx nx serve`                                   |
-| Production build (to `dist/spoticast`) | `npx nx build`                                   |
+| Production build (to `dist/spoticast`)  | `npx nx build`                                   |
 | Preview build (port 4300)               | `npx nx preview`                                 |
 | Lint (`eslint ./src`)                   | `npx nx lint`                                    |
 | Type-check (`tsc -p tsconfig.app.json`) | `npx nx typecheck`                               |
@@ -41,6 +41,9 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
 - Theming: color tokens are CSS variables in `src/styles.css`, exposed to Tailwind via `@theme inline` (`bg-surface`, `text-fg-muted`, `bg-brand`, …). Use them instead of raw colors. `data-theme` on `<html>` switches dark/light. `--accent` is overridden per screen with the cover's dominant color.
 - Spotify Web API: it follows the February 2026 Development Mode rules. Library writes go through `PUT`/`DELETE /me/library`, playlist contents through `/playlists/{id}/items`, search returns at most 10 results per page, and there are no batch fetch endpoints.
 - Environment: copy `.env.example` to `.env` and set `VITE_SPOTIFY_CLIENT_ID`. `VITE_BASE` sets the deploy base path (`/<repo>/` on GitHub Pages). Spotify rejects `localhost` redirect URIs, so the dev server runs on `127.0.0.1`.
+- Playback and Up Next:
+  - Up Next is the user's private Spotify playlist "Spoticast". It is found or created by `ensureQueuePlaylist()` and edited only through the serialized helpers in `src/features/queue/queue.ts`, which update the cache optimistically and roll back on errors.
+  - Episodes are played as that playlist's context, so the queue keeps going after the current episode. Issue playback commands only through `src/features/player/player-controller.ts`, which covers both the Web Playback SDK (this browser) and Spotify Connect (other devices).
 - PWA icons are generated from `public/logo.svg` with `npx pwa-assets-generator` (`pwa-assets.config.ts`).
 - Tailwind v4 is loaded through the `@tailwindcss/vite` plugin and `@import 'tailwindcss'` in `src/styles.css`. There is no `tailwind.config.*` file; Tailwind v4 is configured in CSS. CSS modules (`*.module.css`) are also supported.
 - New React code should come from the Nx generators (`npx nx g @nx/react:component`, `@nx/react:lib`). Styling is Tailwind, so pass `--style=none` (e.g. `npx nx g @nx/react:component src/features/home/show-card --style=none --no-interactive`). Generated files are kebab-case with a colocated `.spec.tsx`.

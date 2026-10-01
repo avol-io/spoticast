@@ -5,11 +5,8 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import EmptyState from '../../app/ui/empty-state';
 import { isVideoShow, pickImage } from '../../lib/episodes';
 import { useDominantColor } from '../../lib/color/dominant';
-import type {
-  SimplifiedEpisode,
-  SimplifiedShow,
-} from '../../lib/spotify/types';
 import { useIsArchived } from '../archive/use-archive';
+import EpisodeActions from '../player/episode-actions';
 import { flattenEpisodes, useShow, useShowEpisodes } from '../library/queries';
 import EpisodeRow from './episode-row';
 import PodcastHero from './podcast-hero';
@@ -31,11 +28,6 @@ function useAutoLoad(enabled: boolean, load: () => void) {
     return () => observer.disconnect();
   }, [enabled, load]);
   return ref;
-}
-
-export interface EpisodeListProps {
-  show: SimplifiedShow;
-  episodes: SimplifiedEpisode[];
 }
 
 export function PodcastPage() {
@@ -155,6 +147,14 @@ export function PodcastPage() {
                     <EpisodeRow
                       episode={episode}
                       video={isVideoShow(show.data)}
+                      actions={
+                        show.data && (
+                          <EpisodeActions
+                            episode={{ ...episode, show: show.data }}
+                            video={isVideoShow(show.data)}
+                          />
+                        )
+                      }
                     />
                   </li>
                 ))}
