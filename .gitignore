@@ -48,3 +48,8 @@ vite.config.*.timestamp*
 vitest.config.*.timestamp*
 
 storybook-static
+# local env
+.env
+.env.local
+.env.*.local
+dev-dist

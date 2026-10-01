@@ -1,26 +1,30 @@
-import { render } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { render, screen } from '@testing-library/react';
+import { useAuth } from '../lib/spotify/auth';
 
 import App from './app';
 
 describe('App', () => {
-  it('should render successfully', () => {
-    const { baseElement } = render(
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>,
-    );
-    expect(baseElement).toBeTruthy();
+  afterEach(() => useAuth.setState({ tokens: null }));
+
+  it('asks to log in when logged out', () => {
+    render(<App />);
+    expect(
+      screen.getByRole('button', { name: /log in with spotify/i }),
+    ).toBeInTheDocument();
   });
 
-  it('should have a greeting as the title', () => {
-    const { getAllByText } = render(
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>,
-    );
+  it('shows the podcasts home when logged in', () => {
+    useAuth.setState({
+      tokens: {
+        accessToken: 'a',
+        refreshToken: 'r',
+        expiresAt: Date.now() + 1e6,
+        scope: '',
+      },
+    });
+    render(<App />);
     expect(
-      getAllByText(new RegExp('Welcome sposticast', 'gi')).length > 0,
-    ).toBeTruthy();
+      screen.getByRole('heading', { level: 1, name: 'Podcasts' }),
+    ).toBeInTheDocument();
   });
 });
