@@ -44,6 +44,9 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
 - Playback and Up Next:
   - Up Next is the user's private Spotify playlist "Spoticast". It is found or created by `ensureQueuePlaylist()` and edited only through the serialized helpers in `src/features/queue/queue.ts`, which update the cache optimistically and roll back on errors.
   - Episodes are played as that playlist's context, so the queue keeps going after the current episode. Issue playback commands only through `src/features/player/player-controller.ts`, which covers both the Web Playback SDK (this browser) and Spotify Connect (other devices).
+- Archive and filters:
+  - "Archived" = `fully_played` on Spotify, or archived locally and waiting for the silent-completion sync (`src/features/archive/`). Use `useIsArchived()` rather than reading `resume_point` directly.
+  - Per-podcast filters and smart lists share the pure matcher in `src/lib/filters/engine.ts`.
 - PWA icons are generated from `public/logo.svg` with `npx pwa-assets-generator` (`pwa-assets.config.ts`).
 - Tailwind v4 is loaded through the `@tailwindcss/vite` plugin and `@import 'tailwindcss'` in `src/styles.css`. There is no `tailwind.config.*` file; Tailwind v4 is configured in CSS. CSS modules (`*.module.css`) are also supported.
 - New React code should come from the Nx generators (`npx nx g @nx/react:component`, `@nx/react:lib`). Styling is Tailwind, so pass `--style=none` (e.g. `npx nx g @nx/react:component src/features/home/show-card --style=none --no-interactive`). Generated files are kebab-case with a colocated `.spec.tsx`.

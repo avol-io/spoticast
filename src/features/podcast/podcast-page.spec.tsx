@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { libraryKeys } from '../library/queries';
 import { useArchiveStore } from '../archive/archive-store';
+import { useFilters } from '../../lib/storage/filters';
+import { emptyCriteria } from '../../lib/filters/engine';
 
 import PodcastPage from './podcast-page';
 
@@ -96,5 +98,24 @@ describe('PodcastPage', () => {
     expect(within(panel).getByText('Episode 3')).toBeInTheDocument();
     expect(within(panel).getByText('Archived')).toBeInTheDocument();
     useArchiveStore.setState({ pending: {} });
+  });
+
+  it('applies the saved filter of the podcast and can clear it', async () => {
+    useFilters.setState({
+      podcast: { s1: { ...emptyCriteria, text: 'Episode 3' } },
+    });
+    renderPage();
+    const panel = screen.getByRole('tabpanel');
+    expect(within(panel).getByText('Episode 3')).toBeInTheDocument();
+    expect(within(panel).queryByText('Episode 1')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filter' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Episode 1'),
+    ).toBeInTheDocument();
+    expect(useFilters.getState().podcast.s1).toBeUndefined();
   });
 });

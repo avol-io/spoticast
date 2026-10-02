@@ -3,6 +3,9 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 
 import AppShell from './app-shell';
 
+vi.mock('../../features/filters/smart-playlists-runtime', () => ({
+  default: () => null,
+}));
 vi.mock('../../features/player/player-runtime', () => ({
   default: () => null,
 }));

@@ -1,11 +1,20 @@
-import { Archive, Headphones } from 'lucide-react';
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { Archive, Headphones, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
 import EmptyState from '../../app/ui/empty-state';
 import { isVideoShow, pickImage } from '../../lib/episodes';
 import { useDominantColor } from '../../lib/color/dominant';
 import { useIsArchived } from '../archive/use-archive';
+import FilterSummary from '../filters/filter-summary';
+import PodcastFilterSheet from '../filters/podcast-filter-sheet';
+import IconButton from '../../app/ui/icon-button';
+import {
+  emptyCriteria,
+  isEmptyCriteria,
+  matchesCriteria,
+} from '../../lib/filters/engine';
+import { useFilters } from '../../lib/storage/filters';
 import EpisodeActions from '../player/episode-actions';
 import { flattenEpisodes, useShow, useShowEpisodes } from '../library/queries';
 import EpisodeRow from './episode-row';
@@ -41,7 +50,15 @@ export function PodcastPage() {
   const isArchived = useIsArchived();
   const accent = useDominantColor(pickImage(show.data?.images, 300));
 
-  const all = flattenEpisodes(episodesQuery.data);
+  const criteria = useFilters((s) => s.podcast[showId]) ?? emptyCriteria;
+  const setPodcastFilter = useFilters((s) => s.setPodcastFilter);
+  const filtered = !isEmptyCriteria(criteria);
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  const loaded = flattenEpisodes(episodesQuery.data);
+  const all = filtered
+    ? loaded.filter((ep) => matchesCriteria(ep, criteria, { show: show.data }))
+    : loaded;
   const archived = all.filter(isArchived);
   const unplayed = all.filter((ep) => !isArchived(ep));
   const visible = tab === 'archived' ? archived : unplayed;
@@ -81,36 +98,54 @@ export function PodcastPage() {
         </aside>
 
         <section className="mt-6 lg:mt-0">
-          <div
-            role="tablist"
-            className="sticky top-0 z-10 -mx-4 flex gap-1 bg-bg/80 px-4 py-2 backdrop-blur-md lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:backdrop-blur-none"
-          >
-            {(
-              [
-                ['unplayed', t('podcast.tabUnplayed'), unplayed.length],
-                ['archived', t('podcast.tabArchived'), archived.length],
-              ] as const
-            ).map(([value, label, count]) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={tab === value}
-                onClick={() => setTab(value)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                  tab === value
-                    ? 'bg-fg text-bg'
-                    : 'text-fg-muted hover:bg-surface-2'
-                }`}
+          <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-bg/80 px-4 py-2 backdrop-blur-md lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:backdrop-blur-none">
+            <div className="flex items-center gap-1">
+              <div role="tablist" className="flex flex-1 gap-1">
+                {(
+                  [
+                    ['unplayed', t('podcast.tabUnplayed'), unplayed.length],
+                    ['archived', t('podcast.tabArchived'), archived.length],
+                  ] as const
+                ).map(([value, label, count]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === value}
+                    onClick={() => setTab(value)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                      tab === value
+                        ? 'bg-fg text-bg'
+                        : 'text-fg-muted hover:bg-surface-2'
+                    }`}
+                  >
+                    {label}
+                    <span className="ml-1.5 tabular-nums opacity-60">
+                      {count}
+                      {hasNextPage ? '+' : ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <IconButton
+                label={t('filters.filter')}
+                aria-pressed={filtered}
+                onClick={() => setFilterOpen(true)}
+                className={filtered ? 'bg-accent/20 text-accent' : ''}
               >
-                {label}
-                <span className="ml-1.5 tabular-nums opacity-60">
-                  {count}
-                  {hasNextPage ? '+' : ''}
-                </span>
-              </button>
-            ))}
+                <SlidersHorizontal />
+              </IconButton>
+            </div>
+            <FilterSummary
+              criteria={criteria}
+              onClear={() => setPodcastFilter(showId, null)}
+            />
           </div>
+          <PodcastFilterSheet
+            showId={showId}
+            open={filterOpen}
+            onClose={() => setFilterOpen(false)}
+          />
 
           <div role="tabpanel">
             {episodesQuery.isPending ? (
@@ -122,13 +157,18 @@ export function PodcastPage() {
                   </li>
                 ))}
               </ul>
-            ) : episodesQuery.isError && all.length === 0 ? (
+            ) : episodesQuery.isError && loaded.length === 0 ? (
               <EmptyState
                 title={t('errors.loadFailed')}
                 description={episodesQuery.error.message}
               />
             ) : visible.length === 0 && !hasNextPage ? (
-              tab === 'unplayed' ? (
+              filtered ? (
+                <EmptyState
+                  icon={<SlidersHorizontal />}
+                  title={t('filters.noMatches')}
+                />
+              ) : tab === 'unplayed' ? (
                 <EmptyState
                   icon={<Headphones />}
                   title={t('podcast.noUnplayed')}

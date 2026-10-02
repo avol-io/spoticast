@@ -116,6 +116,11 @@ export const createPlaylist = (name: string, description: string) =>
     body: { name, description, public: false },
   });
 
+export const updatePlaylistDetails = (
+  id: string,
+  details: { name?: string; description?: string },
+) => spotify<void>(`/playlists/${id}`, { method: 'PUT', body: details });
+
 export const getPlaylistItems = (id: string, signal?: AbortSignal) =>
   getAll<PlaylistItem>(`/playlists/${id}/items`, {
     query: { limit: PAGE_SIZE, additional_types: 'episode', market },

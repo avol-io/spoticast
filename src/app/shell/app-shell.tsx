@@ -1,4 +1,5 @@
 import { Outlet, ScrollRestoration } from 'react-router-dom';
+import SmartPlaylistsRuntime from '../../features/filters/smart-playlists-runtime';
 import FullPlayer from '../../features/player/full-player';
 import MiniPlayer from '../../features/player/mini-player';
 import PlayerRuntime from '../../features/player/player-runtime';
@@ -38,6 +39,7 @@ export function AppShell() {
       <FullPlayer />
       <VideoSheet />
       <PlayerRuntime />
+      <SmartPlaylistsRuntime />
       <ScrollRestoration />
     </div>
   );

@@ -6,6 +6,7 @@ import {
 import CallbackPage from '../features/auth/callback-page';
 import RequireAuth from '../features/auth/require-auth';
 import FiltersPage from '../features/filters/filters-page';
+import SmartListPage from '../features/filters/smart-list-page';
 import HomePage from '../features/home/home-page';
 import PodcastPage from '../features/podcast/podcast-page';
 import QueuePage from '../features/queue/queue-page';
@@ -25,6 +26,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       { path: 'podcast/:showId', element: <PodcastPage /> },
       { path: 'filters', element: <FiltersPage /> },
+      { path: 'filters/:filterId', element: <SmartListPage /> },
       { path: 'queue', element: <QueuePage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'settings', element: <SettingsPage /> },

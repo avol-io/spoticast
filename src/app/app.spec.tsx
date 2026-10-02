@@ -3,6 +3,9 @@ import { useAuth } from '../lib/spotify/auth';
 
 import App from './app';
 
+vi.mock('../features/filters/smart-playlists-runtime', () => ({
+  default: () => null,
+}));
 vi.mock('../features/player/player-runtime', () => ({ default: () => null }));
 
 describe('App', () => {
