@@ -1,9 +1,15 @@
-import { LogOut } from 'lucide-react';
+import { Archive, LogOut, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '../../app/ui/page-header';
 import SegmentedControl from '../../app/ui/segmented-control';
 import { logout } from '../../lib/spotify/auth';
+import {
+  MAX_ARCHIVE_ATTEMPTS,
+  useArchiveStore,
+} from '../archive/archive-store';
+import { runArchiveSync } from '../player/player-controller';
+import { usePlayer } from '../player/player-store';
 import { useSettings } from '../../lib/storage/settings';
 
 const SKIP_BACK = [5, 10, 15, 30];
@@ -28,6 +34,53 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
       <span className="font-medium">{label}</span>
       {children}
     </div>
+  );
+}
+
+function ArchiveSection() {
+  const { t } = useTranslation();
+  const pending = Object.values(useArchiveStore((s) => s.pending));
+  const retryFailed = useArchiveStore((s) => s.retryFailed);
+  const syncing = usePlayer((s) => s.archiveSyncing);
+  const failed = pending.filter(
+    (p) => p.attempts >= MAX_ARCHIVE_ATTEMPTS,
+  ).length;
+
+  return (
+    <Section title={t('archive.settingsTitle')}>
+      <div className="flex flex-col gap-3 px-4 py-3">
+        <p className="text-sm text-fg-muted">{t('archive.syncHint')}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-center gap-2 font-medium">
+            <Archive className="size-4 text-fg-muted" aria-hidden />
+            {syncing
+              ? t('archive.syncing')
+              : pending.length === 0
+                ? t('archive.allSynced')
+                : t('archive.pending', { count: pending.length })}
+            {failed > 0 && (
+              <span className="text-sm text-danger">
+                · {t('archive.failed', { count: failed })}
+              </span>
+            )}
+          </p>
+          {pending.length > 0 && (
+            <button
+              type="button"
+              disabled={syncing}
+              onClick={() => {
+                retryFailed();
+                void runArchiveSync();
+              }}
+              className="flex items-center gap-1.5 rounded-full bg-surface-3 px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+            >
+              <RefreshCw className="size-4" aria-hidden />
+              {t('archive.retry')}
+            </button>
+          )}
+        </div>
+      </div>
+    </Section>
   );
 }
 
@@ -93,6 +146,8 @@ export function SettingsPage() {
               />
             </Row>
           </Section>
+
+          <ArchiveSection />
 
           <Section title={t('settings.account')}>
             <button

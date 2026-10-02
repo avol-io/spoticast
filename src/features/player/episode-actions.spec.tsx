@@ -7,6 +7,7 @@ import { savedEpisodesKey } from '../library/your-episodes';
 import * as queue from '../queue/queue';
 import * as controller from './player-controller';
 import { usePlayer } from './player-store';
+import { useArchiveStore } from '../archive/archive-store';
 
 import EpisodeActions from './episode-actions';
 
@@ -66,5 +67,20 @@ describe('EpisodeActions', () => {
       name: episode.name,
       startAt: 90,
     });
+  });
+
+  it('archives the episode, drops it from Up Next and can restore it', async () => {
+    const remove = vi.spyOn(queue, 'removeFromQueue').mockResolvedValue();
+    renderActions();
+    await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
+    expect(useArchiveStore.getState().pending.e1).toMatchObject({
+      uri: episode.uri,
+    });
+    expect(remove).toHaveBeenCalledWith(episode.uri, { silent: true });
+
+    await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Restore' }));
+    expect(useArchiveStore.getState().pending).toEqual({});
   });
 });

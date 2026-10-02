@@ -19,6 +19,8 @@ interface PlayerState {
   nowPlaying: NowPlaying | null;
   fullPlayerOpen: boolean;
   video: VideoRequest | null;
+  /** An archived episode is being completed silently on this browser. */
+  archiveSyncing: boolean;
   setFullPlayerOpen: (open: boolean) => void;
   setVideo: (video: VideoRequest | null) => void;
 }
@@ -28,6 +30,7 @@ export const usePlayer = create<PlayerState>()((set) => ({
   nowPlaying: null,
   fullPlayerOpen: false,
   video: null,
+  archiveSyncing: false,
   setFullPlayerOpen: (fullPlayerOpen) => set({ fullPlayerOpen }),
   setVideo: (video) => set({ video }),
 }));

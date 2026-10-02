@@ -1,15 +1,15 @@
-import { Check, Video } from 'lucide-react';
+import { Archive, Check, Undo2, Video } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   episodeProgress,
   formatDuration,
   formatReleaseDate,
-  isFullyPlayed,
   pickImage,
   releaseDate,
 } from '../../lib/episodes';
 import type { SimplifiedEpisode } from '../../lib/spotify/types';
+import { useArchiveStatus } from '../archive/use-archive';
 
 export interface EpisodeRowProps {
   episode: SimplifiedEpisode;
@@ -31,9 +31,11 @@ export function EpisodeRow({
 }: EpisodeRowProps) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-  const played = isFullyPlayed(episode);
+  const status = useArchiveStatus(episode);
+  const played = status === 'played';
   const progress = episodeProgress(episode);
-  const inProgress = progress.started && !played;
+  const inProgress =
+    progress.started && !status && !episode.resume_point?.fully_played;
 
   return (
     <article className="flex gap-3 py-3">
@@ -72,13 +74,30 @@ export function EpisodeRow({
             )}
           </p>
           <h3
-            className={`mt-0.5 font-semibold ${expanded ? '' : 'line-clamp-2'} ${played ? 'text-fg-muted' : ''}`}
+            className={`mt-0.5 font-semibold ${expanded ? '' : 'line-clamp-2'} ${played || status === 'pending' ? 'text-fg-muted' : ''}`}
           >
             {episode.name}
           </h3>
         </button>
         <div className="mt-1.5 flex items-center gap-2 text-xs text-fg-muted">
-          {played ? (
+          {status === 'pending' ? (
+            <span
+              className="flex items-center gap-1 text-fg-muted"
+              title={t('archive.pendingHint')}
+            >
+              <Archive className="size-3.5" aria-hidden />
+              {t('archive.archived')}
+            </span>
+          ) : status === 'restored' ? (
+            <span
+              className="flex items-center gap-1"
+              title={t('archive.restoredHint')}
+            >
+              <Undo2 className="size-3.5" aria-hidden />
+              {t('archive.restored')} ·{' '}
+              {formatDuration(episode.duration_ms, i18n.language)}
+            </span>
+          ) : played ? (
             <span className="flex items-center gap-1 text-success">
               <Check className="size-3.5" aria-hidden />
               {t('episode.played')}

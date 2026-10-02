@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { useSettings } from '../../lib/storage/settings';
+import { useArchiveStore } from '../archive/archive-store';
 import { ensureQueuePlaylist, pruneFinishedFromQueue } from '../queue/queue';
 import {
   initPlayer,
   next,
+  runArchiveSync,
   seekTo,
   skip,
   startPolling,
@@ -78,6 +80,28 @@ function useMediaSession() {
   }, [local, skipBackSeconds, skipForwardSeconds]);
 }
 
+/**
+ * Completes archived episodes on Spotify whenever the player is idle: when
+ * something gets archived, playback pauses, the player connects, and every
+ * 30 seconds as a fallback.
+ */
+function useArchiveSync() {
+  const pendingCount = useArchiveStore((s) => Object.keys(s.pending).length);
+  const sdkReady = usePlayer((s) => s.sdkStatus === 'ready');
+  const paused = usePlayer((s) => s.nowPlaying?.paused ?? true);
+
+  useEffect(() => {
+    if (!pendingCount || !sdkReady || !paused) return;
+    // Give a just-paused player a moment, in case the user resumes.
+    const soon = setTimeout(() => void runArchiveSync(), 5000);
+    const fallback = setInterval(() => void runArchiveSync(), 30_000);
+    return () => {
+      clearTimeout(soon);
+      clearInterval(fallback);
+    };
+  }, [pendingCount, sdkReady, paused]);
+}
+
 /** Starts the player, device polling and the Up Next playlist; renders nothing. */
 export function PlayerRuntime() {
   useEffect(() => {
@@ -89,6 +113,7 @@ export function PlayerRuntime() {
     return stopPolling;
   }, []);
   useMediaSession();
+  useArchiveSync();
   return null;
 }
 

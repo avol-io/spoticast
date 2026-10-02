@@ -15,6 +15,7 @@ import {
 } from '../../lib/spotify/endpoints';
 import type { Episode } from '../../lib/spotify/types';
 import { toast } from '../../lib/storage/toasts';
+import { isArchivedIn, useArchiveStore } from '../archive/archive-store';
 import { applyMove, moveRequest, playNextPosition } from './queue-logic';
 import { QUEUE_PLAYLIST_NAME, useQueueStore } from './queue-store';
 
@@ -201,11 +202,12 @@ export function moveInQueue(from: number, to: number) {
   });
 }
 
-/** Startup cleanup: drop episodes Spotify reports as completed. */
+/** Startup cleanup: drop completed or archived episodes. */
 export async function pruneFinishedFromQueue() {
   const { episodes } = await currentQueue();
+  const archive = useArchiveStore.getState();
   const finished = episodes
-    .filter((ep) => ep.resume_point?.fully_played)
+    .filter((ep) => isArchivedIn(ep, archive))
     .map((ep) => ep.uri);
   if (finished.length === 0) return;
   await serial(() =>

@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { libraryKeys } from '../library/queries';
+import { useArchiveStore } from '../archive/archive-store';
 
 import PodcastPage from './podcast-page';
 
@@ -75,5 +76,25 @@ describe('PodcastPage', () => {
       'aria-selected',
       'true',
     );
+  });
+
+  it('moves manually archived episodes to the Archived tab', () => {
+    useArchiveStore.setState({
+      pending: {
+        '3': {
+          id: '3',
+          uri: 'u',
+          name: 'Episode 3',
+          durationMs: 1,
+          archivedAt: 0,
+          attempts: 0,
+        },
+      },
+    });
+    renderPage('/podcast/s1?tab=archived');
+    const panel = screen.getByRole('tabpanel');
+    expect(within(panel).getByText('Episode 3')).toBeInTheDocument();
+    expect(within(panel).getByText('Archived')).toBeInTheDocument();
+    useArchiveStore.setState({ pending: {} });
   });
 });

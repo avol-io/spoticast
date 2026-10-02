@@ -4,6 +4,7 @@ import { getAccessToken } from '../../lib/spotify/auth';
 import { SpotifyApiError } from '../../lib/spotify/client';
 import {
   getDevices,
+  getEpisode,
   getPlaybackState,
   pausePlayback,
   seekPlayback,
@@ -30,12 +31,35 @@ import {
   type NowPlaying,
 } from './playback';
 import { usePlayer } from './player-store';
+import {
+  MAX_ARCHIVE_ATTEMPTS,
+  useArchiveStore,
+} from '../archive/archive-store';
+import {
+  syncNextArchived,
+  type ArchiveSyncDeps,
+} from '../archive/archive-sync';
 import { loadPlaybackSdk } from './sdk';
 
 export const LOCAL_DEVICE_NAME = 'Spoticast';
 
 let player: Spotify.Player | null = null;
 let lastFinished: { uri: string; at: number } | null = null;
+
+// Archive sync (see features/archive): while it silently plays an episode
+// tail, SDK events must not reach the UI; any user command takes over.
+let archiveSyncing = false;
+let userActed = false;
+let volumeBeforeSync = 1;
+let uiBeforeSync: NowPlaying | null = null;
+
+function userAction() {
+  userActed = true;
+  if (archiveSyncing) {
+    archiveSyncing = false;
+    void player?.setVolume(volumeBeforeSync);
+  }
+}
 
 // --- State ------------------------------------------------------------------
 
@@ -50,6 +74,7 @@ function onEpisodeFinished(uri: string) {
 }
 
 export function setNowPlaying(next: NowPlaying | null) {
+  if (archiveSyncing) return;
   const prev = usePlayer.getState().nowPlaying;
   usePlayer.setState({ nowPlaying: next });
   const finished = finishedEpisode(prev, next);
@@ -208,6 +233,7 @@ async function targetDevice(): Promise<string | undefined> {
  * the Spoticast playlist plays from there, so the queue continues after it.
  */
 export function playEpisode(episode: Episode): Promise<void> {
+  userAction();
   // iOS only lets audio start inside the user gesture.
   void player?.activateElement();
   const np = usePlayer.getState().nowPlaying;
@@ -227,6 +253,7 @@ export function playEpisode(episode: Episode): Promise<void> {
 }
 
 export function togglePlay(): Promise<void> {
+  userAction();
   void player?.activateElement();
   const np = usePlayer.getState().nowPlaying;
   if (!np) {
@@ -245,6 +272,7 @@ export function togglePlay(): Promise<void> {
 }
 
 export function seekTo(positionMs: number) {
+  userAction();
   const np = usePlayer.getState().nowPlaying;
   if (!np) return Promise.resolve();
   const clamped = Math.max(0, Math.min(np.durationMs - 1000, positionMs));
@@ -260,6 +288,7 @@ export function skip(seconds: number) {
 
 /** Skips to the next queued episode; the skipped one leaves Up Next. */
 export function next() {
+  userAction();
   const np = usePlayer.getState().nowPlaying;
   if (!np) return Promise.resolve();
   const skipped = np.uri;
@@ -277,6 +306,7 @@ export function pause() {
 }
 
 export function transferTo(deviceId: string) {
+  userAction();
   void player?.activateElement();
   const np = usePlayer.getState().nowPlaying;
   return guarded(() => transferPlayback(deviceId, !!np && !np.paused));
@@ -287,6 +317,7 @@ export function transferTo(deviceId: string) {
  * position) and opens the app on the Spoticast playlist.
  */
 export async function switchToSpotify(playlistId: string) {
+  userAction();
   const { localDeviceId, nowPlaying } = usePlayer.getState();
   try {
     const preferMobile = window.matchMedia('(pointer: coarse)').matches;
@@ -312,4 +343,146 @@ export async function switchToSpotify(playlistId: string) {
     once: true,
   });
   window.location.href = `spotify:playlist:${playlistId}`;
+}
+
+// --- Archive sync -------------------------------------------------------------
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Resolves when the SDK reports `uri` ended (or moved on), or on timeout. */
+function waitForSdk(
+  done: (state: Spotify.PlaybackState, seen: boolean) => boolean,
+  uri: string,
+  timeoutMs: number,
+): Promise<void> {
+  return new Promise((resolve) => {
+    let seen = false;
+    const finish = () => {
+      clearTimeout(timer);
+      clearInterval(abortCheck);
+      player?.removeListener('player_state_changed', onState);
+      resolve();
+    };
+    const onState = (state: Spotify.PlaybackState | null) => {
+      if (!state) return;
+      if (state.track_window.current_track?.uri === uri) seen = true;
+      if (done(state, seen)) finish();
+    };
+    const timer = setTimeout(finish, timeoutMs);
+    const abortCheck = setInterval(() => userActed && finish(), 200);
+    player?.addListener('player_state_changed', onState);
+  });
+}
+
+export function archiveSyncDeps(): ArchiveSyncDeps {
+  const local = () => usePlayer.getState().localDeviceId;
+  return {
+    pending: () => Object.values(useArchiveStore.getState().pending),
+    isIdle: async () => {
+      const { sdkStatus, nowPlaying } = usePlayer.getState();
+      if (!player || sdkStatus !== 'ready' || !local()) return false;
+      if (nowPlaying && !nowPlaying.paused) return false;
+      const state = await getPlaybackState().catch(() => undefined);
+      return !state?.is_playing;
+    },
+    snapshot: () => {
+      const np = usePlayer.getState().nowPlaying;
+      return np
+        ? {
+            contextUri: np.contextUri,
+            uri: np.uri,
+            positionMs: currentPosition(np),
+          }
+        : null;
+    },
+    getVolume: async () => {
+      volumeBeforeSync = (await player?.getVolume()) ?? 1;
+      return volumeBeforeSync;
+    },
+    setVolume: async (volume) => {
+      await player?.setVolume(volume);
+    },
+    playSilently: (uri, positionMs) =>
+      startPlayback({ deviceId: local(), uris: [uri], positionMs }),
+    waitForEnd: (uri, timeoutMs) =>
+      waitForSdk(
+        (state, seen) =>
+          seen &&
+          (state.track_window.current_track?.uri !== uri ||
+            state.position >= state.duration - 500 ||
+            (state.paused && state.position === 0)),
+        uri,
+        timeoutMs,
+      ),
+    pause: async () => {
+      await player?.pause();
+    },
+    restore: async (snapshot) => {
+      await startPlayback({
+        deviceId: local(),
+        ...(snapshot.contextUri
+          ? { contextUri: snapshot.contextUri, offsetUri: snapshot.uri }
+          : { uris: [snapshot.uri] }),
+        positionMs: snapshot.positionMs,
+      });
+      await waitForSdk(
+        (state) => state.track_window.current_track?.uri === snapshot.uri,
+        snapshot.uri,
+        4000,
+      );
+      await player?.pause();
+    },
+    verify: async (id) => {
+      // Resume points take a moment to update server-side.
+      await sleep(2500);
+      return !!(await getEpisode(id)).resume_point?.fully_played;
+    },
+    markSynced: (id) => {
+      useArchiveStore.getState().markSynced(id);
+      void queryClient.invalidateQueries({ queryKey: libraryKeys.episodes() });
+    },
+    markAttempt: (id) => {
+      useArchiveStore.getState().markAttempt(id);
+      const entry = useArchiveStore.getState().pending[id];
+      if (entry && entry.attempts >= MAX_ARCHIVE_ATTEMPTS) {
+        toast(i18n.t('archive.syncFailed', { name: entry.name }), {
+          tone: 'error',
+        });
+      }
+    },
+    aborted: () => userActed,
+    setSyncing: (syncing) => {
+      if (syncing) {
+        userActed = false;
+        uiBeforeSync = usePlayer.getState().nowPlaying;
+        archiveSyncing = true;
+      } else if (archiveSyncing) {
+        archiveSyncing = false;
+        // Show what was loaded before, not the silently completed episode.
+        usePlayer.setState({
+          nowPlaying: uiBeforeSync
+            ? { ...uiBeforeSync, paused: true, updatedAt: Date.now() }
+            : null,
+        });
+      }
+      usePlayer.setState({ archiveSyncing: syncing });
+    },
+  };
+}
+
+let archiveRun: Promise<void> | null = null;
+
+/** Completes pending archived episodes one by one while the player is idle. */
+export function runArchiveSync(): Promise<void> {
+  archiveRun ??= (async () => {
+    for (;;) {
+      if (document.hidden) break;
+      const result = await syncNextArchived(archiveSyncDeps());
+      if (result !== 'synced' && result !== 'retry') break;
+      await sleep(1000);
+    }
+  })().finally(() => {
+    archiveRun = null;
+  });
+  return archiveRun;
 }

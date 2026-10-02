@@ -1,4 +1,6 @@
 import {
+  Archive,
+  ArchiveRestore,
   Bookmark,
   BookmarkMinus,
   ExternalLink,
@@ -14,6 +16,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import Menu, { type MenuItem } from '../../app/ui/menu';
 import type { Episode } from '../../lib/spotify/types';
+import {
+  archiveEpisode,
+  restoreEpisode,
+  useIsArchived,
+} from '../archive/use-archive';
 import {
   useIsSavedEpisode,
   useToggleSavedEpisode,
@@ -67,6 +74,7 @@ export function EpisodeActions({ episode, video }: EpisodeActionsProps) {
   const inQueue = useIsInQueue(episode.uri);
   const saved = useIsSavedEpisode(episode.uri);
   const toggleSaved = useToggleSavedEpisode();
+  const archived = useIsArchived()(episode);
 
   const items: MenuItem[] = [
     {
@@ -91,6 +99,17 @@ export function EpisodeActions({ episode, video }: EpisodeActionsProps) {
           },
         ]
       : []),
+    archived
+      ? {
+          label: t('archive.restore'),
+          icon: <ArchiveRestore />,
+          onSelect: () => restoreEpisode(episode),
+        }
+      : {
+          label: t('archive.archive'),
+          icon: <Archive />,
+          onSelect: () => archiveEpisode(episode),
+        },
     {
       label: saved ? t('episode.unsaveEpisode') : t('episode.saveEpisode'),
       icon: saved ? <BookmarkMinus /> : <Bookmark />,
