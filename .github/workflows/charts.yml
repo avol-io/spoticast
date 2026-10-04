@@ -1,0 +1,42 @@
+# Refreshes the Top/Trending podcast charts shown in Search when the search
+# field is empty. It only downloads the charts and uploads public/charts/ to
+# the charts/ folder on the FTP hosting: no build, no full deploy.
+#
+# Uses the same secrets/variables as deploy.yml (FTP_*).
+name: charts
+
+on:
+  schedule:
+    - cron: '17 5 * * *' # every day, 05:17 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ftp
+  cancel-in-progress: false
+
+jobs:
+  charts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Plain Node script without dependencies: no npm ci needed.
+      - name: Download charts
+        run: node scripts/fetch-charts.mjs
+
+      - name: Upload charts via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          local-dir: public/charts/
+          server-dir: ${{ vars.FTP_SERVER_DIR || './' }}charts/

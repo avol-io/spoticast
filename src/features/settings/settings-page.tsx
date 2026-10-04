@@ -9,6 +9,7 @@ import {
   useArchiveStore,
 } from '../archive/archive-store';
 import { runArchiveSync } from '../player/player-controller';
+import MarketSelect from '../search/market-select';
 import { usePlayer } from '../player/player-store';
 import { useSettings } from '../../lib/storage/settings';
 
@@ -144,6 +145,12 @@ export function SettingsPage() {
                   label: t('settings.seconds', { count: s }),
                 }))}
               />
+            </Row>
+          </Section>
+
+          <Section title={t('settings.searchSection')}>
+            <Row label={t('search.country')}>
+              <MarketSelect />
             </Row>
           </Section>
 

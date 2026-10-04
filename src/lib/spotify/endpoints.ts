@@ -17,6 +17,7 @@ import type {
 
 /** Spotify's max page size for shows, episodes and playlist items. */
 export const PAGE_SIZE = 50;
+export const SEARCH_PAGE_SIZE = 10;
 /** Limits of the batch endpoints. */
 const LIBRARY_BATCH = 40;
 const PLAYLIST_BATCH = 100;
@@ -86,10 +87,17 @@ export const getShowEpisodes = (
 export const getEpisode = (id: string, signal?: AbortSignal) =>
   spotify<Episode>(`/episodes/${id}`, { query: { market }, signal });
 
-export const search = (q: string, offset = 0, signal?: AbortSignal) =>
+export type SearchType = 'show' | 'episode';
+
+export const search = (
+  q: string,
+  type: SearchType,
+  offset = 0,
+  signal?: AbortSignal,
+) =>
   spotify<SearchResults>('/search', {
     // Development Mode caps search pages at 10 results.
-    query: { q, type: 'show,episode', market, limit: 10, offset },
+    query: { q, type, market, limit: SEARCH_PAGE_SIZE, offset },
     signal,
   });
 

@@ -1,0 +1,62 @@
+# Builds the app and uploads it to the FTP hosting (tophost.it).
+# Only files that changed since the last deploy are uploaded (the action keeps
+# a sync-state file on the server). The charts/ folder is managed by the
+# charts workflow and is never touched here.
+#
+# Repository settings → Secrets and variables → Actions:
+#   secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
+#   variables: VITE_SPOTIFY_CLIENT_ID (required)
+#              FTP_SERVER_DIR (default "./"; the site root, e.g. "./www/")
+#              FTP_PROTOCOL (default "ftps"; "ftp" if the host has no TLS)
+#              VITE_BASE (default "/")
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One FTP session at a time, shared with the charts workflow.
+concurrency:
+  group: ftp
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint, type-check and test
+        run: npx nx run-many -t lint typecheck test
+        env:
+          NX_NO_CLOUD: true
+
+      - name: Build
+        run: npx nx build
+        env:
+          NX_NO_CLOUD: true
+          VITE_SPOTIFY_CLIENT_ID: ${{ vars.VITE_SPOTIFY_CLIENT_ID }}
+          VITE_BASE: ${{ vars.VITE_BASE || '/' }}
+
+      - name: Upload changed files via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          local-dir: dist/spoticast/
+          server-dir: ${{ vars.FTP_SERVER_DIR || './' }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            charts/**
