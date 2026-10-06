@@ -269,6 +269,12 @@ export const it: Dictionary = {
     playlistSynced: 'Playlist “{{name}}” aggiornata',
     notFound: 'Questo filtro non esiste più.',
     playAll: 'Riproduci tutti',
+    removedElsewhere:
+      'Il filtro “{{name}}” è stato eliminato su un altro dispositivo',
+    syncHint:
+      'Il filtro si sincronizza con gli altri tuoi dispositivi tramite questa playlist; spegnendola resta solo su questo.',
+    syncTooLong:
+      'Troppi podcast o testo troppo lungo per sincronizzarlo: la playlist funziona, ma il filtro resta solo su questo dispositivo.',
   },
   search: {
     placeholder: 'Cerca podcast ed episodi',

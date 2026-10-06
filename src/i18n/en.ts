@@ -262,6 +262,11 @@ export const en = {
     playlistSynced: 'Playlist “{{name}}” updated',
     notFound: 'This filter no longer exists.',
     playAll: 'Play all',
+    removedElsewhere: 'Filter “{{name}}” was removed on another device',
+    syncHint:
+      'The filter syncs with your other devices through this playlist; turning it off keeps it only on this one.',
+    syncTooLong:
+      'Too many podcasts or too much text to sync: the playlist still works, but this filter stays on this device.',
   },
   search: {
     placeholder: 'Search podcasts and episodes',

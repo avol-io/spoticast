@@ -4,6 +4,7 @@ import Sheet from '../../app/ui/sheet';
 import Switch from '../../app/ui/switch';
 import { pickImage } from '../../lib/episodes';
 import { emptyCriteria, type EpisodeSort } from '../../lib/filters/engine';
+import { encodeSmartList } from '../../lib/filters/smart-list-codec';
 import {
   newSmartListId,
   useFilters,
@@ -25,6 +26,8 @@ export function newSmartList(): SmartList {
     spotifyPlaylist: false,
     playlistId: null,
     playlistName: null,
+    playlistDescription: null,
+    updatedAt: 0,
   };
 }
 
@@ -64,8 +67,7 @@ export function SmartListEditor({
   };
 
   const save = async () => {
-    const next = { ...draft, name: draft.name.trim() };
-    saveSmartList(next);
+    const next = saveSmartList({ ...draft, name: draft.name.trim() });
     onSaved?.(next);
     onClose();
     if (list?.spotifyPlaylist && !next.spotifyPlaylist)
@@ -178,14 +180,21 @@ export function SmartListEditor({
           checked={draft.includeArchived}
           onChange={(includeArchived) => set({ includeArchived })}
         />
-        <Switch
-          label={t('smart.spotifyPlaylist')}
-          description={t('smart.spotifyPlaylistHint', {
-            name: draft.name.trim() || '…',
-          })}
-          checked={draft.spotifyPlaylist}
-          onChange={(spotifyPlaylist) => set({ spotifyPlaylist })}
-        />
+        <div className="flex flex-col gap-2">
+          <Switch
+            label={t('smart.spotifyPlaylist')}
+            description={`${t('smart.spotifyPlaylistHint', {
+              name: draft.name.trim() || '…',
+            })} ${t('smart.syncHint')}`}
+            checked={draft.spotifyPlaylist}
+            onChange={(spotifyPlaylist) => set({ spotifyPlaylist })}
+          />
+          {draft.spotifyPlaylist && !encodeSmartList(draft) && (
+            <p role="status" className="text-xs text-danger">
+              {t('smart.syncTooLong')}
+            </p>
+          )}
+        </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <button

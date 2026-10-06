@@ -69,6 +69,8 @@ describe('SmartListPage', () => {
           spotifyPlaylist: false,
           playlistId: null,
           playlistName: null,
+          playlistDescription: null,
+          updatedAt: 0,
         },
       ],
     }),

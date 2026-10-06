@@ -67,6 +67,8 @@ describe('FiltersPage', () => {
           spotifyPlaylist: true,
           playlistId: null,
           playlistName: null,
+          playlistDescription: null,
+          updatedAt: 0,
         },
       ],
     });
