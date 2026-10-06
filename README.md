@@ -1,102 +1,93 @@
 # Spoticast
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Spoticast is a Pocket Casts–style client for your **Spotify podcasts**. It is an installable PWA, designed for mobile first and laid out for desktop too. It runs entirely in the browser: there is no backend, and it is deployed as static files.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+## Features
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/tutorials/react-standalone-tutorial?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+- **Library**: a grid or list of the podcasts you follow. Badges count the episodes you haven't listened to yet. Sort by latest episode, by name, or in your own drag-and-drop order.
+- **Podcast detail**: the cover morphs into the page (View Transition API) and the page takes its colors from the cover. Episodes are split into "To listen" and "Archived" tabs.
+- **Archive**: archived = completed on Spotify, or archived in the app. Spotify has no API to mark an episode as played. Instead, when nothing is playing, Spoticast silently plays the last seconds of each archived episode in the browser at volume 0, then restores what you were listening to.
+- **Filters**: each podcast has its own filter (duration, last N days, listening status, text), saved in the browser, plus reusable presets. **Smart filters** list episodes across your podcasts. Each one can optionally mirror into a `Spoticast - <name>` playlist on Spotify, rebuilt every time the app starts.
+- **Up Next**: the queue is a private Spotify playlist called `Spoticast`. You can play next, play last, remove and reorder. Finished, archived or skipped episodes leave the queue, and the queue syncs across devices.
+- **Player**: plays in the browser (Web Playback SDK) or controls your other devices through Spotify Connect. There's a mini player and a full-screen player with configurable skips, plus lock-screen controls (Media Session). Video podcasts open in the Spotify embed. "Continue in Spotify" hands playback over to the Spotify app.
+- **Your Episodes**: save or remove a single episode, or mirror the whole queue into "Your Episodes".
+- **Search**: podcasts and episodes. When the field is empty, it shows Spotify's **Trending / Top** podcast charts for your country.
+- Italian and English UI, dark, light and system themes, works offline with cached data, and keyboard and screen-reader friendly (checked with axe).
 
-## Run tasks
+## What Spotify doesn't allow
 
-To run the dev server for your app, use:
+Spoticast follows the Web API rules for apps in **Development Mode**, which changed in February 2026:
 
-```sh
-npx nx serve spoticast
-```
+- The app owner needs **Spotify Premium**, and at most **5 users** can log in. Add each user in the Spotify Developer Dashboard.
+- Playback in the browser requires Premium. Video podcasts play audio-only in the SDK, so Spoticast shows the video through the Spotify embed instead.
+- There is no API for ratings and comments (Spoticast links to the Spotify app instead), for playback speed, for downloads, or for editing the native queue.
+- Search returns at most 10 results per page, and there are no batch endpoints.
 
-To create a production bundle:
+## Spotify app setup
 
-```sh
-npx nx build spoticast
-```
+1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create an app. Enable **Web API** and **Web Playback SDK**.
+2. Add the redirect URIs:
+   - `http://127.0.0.1:4200/callback` for development. Spotify rejects `localhost`, and the dev server automatically moves itself to `127.0.0.1`.
+   - `https://<your-domain>/callback` for production, e.g. `https://spoticast.it/callback`.
+3. Under **User Management**, add the Spotify email of every user who should be able to log in (max 5).
+4. Copy the **Client ID**.
 
-To see all available targets to run for a project, run:
+## Local development
 
-```sh
-npx nx show project spoticast
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
+Requirements: Node 24. A devcontainer is included.
 
 ```sh
-npx nx g @nx/react:app demo
+npm ci
+cp .env.example .env        # then set VITE_SPOTIFY_CLIENT_ID
+npm run charts -- it us     # optional: chart data for the empty search
+npx nx serve                # http://127.0.0.1:4200
 ```
 
-To generate a new library, use:
+| Task              | Command                                                     |
+| ----------------- | ----------------------------------------------------------- |
+| Unit tests        | `npx nx test`                                               |
+| Lint / type-check | `npx nx lint` / `npx nx typecheck`                          |
+| Production build  | `npx nx build` (output in `dist/spoticast`)                 |
+| Preview the build | `npx nx preview` (http://127.0.0.1:4300)                    |
+| Storybook         | `npx nx storybook` (http://localhost:6006)                  |
+| Download charts   | `npm run charts` (all 26 markets) or `npm run charts -- it` |
 
-```sh
-npx nx g @nx/react:lib mylib
+## Deploy (tophost.it, FTP)
+
+Two GitHub Actions workflows publish the site over FTP. Both upload only what changed, and they never run at the same time.
+
+| Workflow     | When                              | What it does                                                                                            |
+| ------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `deploy.yml` | push to `main`, or manual         | Runs lint, type-check, tests and the build, then uploads the changed files. It never touches `charts/`. |
+| `charts.yml` | every day at 05:17 UTC, or manual | Downloads the charts, then uploads only `public/charts/` to `charts/` on the server. No build.          |
+
+In the repository, go to **Settings → Secrets and variables → Actions** and configure:
+
+| Name                     | Type     | Value                                                                    |
+| ------------------------ | -------- | ------------------------------------------------------------------------ |
+| `FTP_SERVER`             | secret   | FTP host, e.g. `ftp.spoticast.it`                                        |
+| `FTP_USERNAME`           | secret   | FTP user                                                                 |
+| `FTP_PASSWORD`           | secret   | FTP password                                                             |
+| `VITE_SPOTIFY_CLIENT_ID` | variable | Client ID of the Spotify app                                             |
+| `FTP_SERVER_DIR`         | variable | Site folder on the server, ending with `/` (default `./`, e.g. `./www/`) |
+| `FTP_PROTOCOL`           | variable | `ftps` (default) or `ftp` if the host has no FTP over TLS                |
+| `VITE_BASE`              | variable | Path the app is served from (default `/`)                                |
+
+Notes:
+
+- The build writes an Apache `.htaccess` file. It redirects to HTTPS, serves `index.html` for app routes, sets long caching for hashed assets and no caching for the shell, service worker and charts, and hides the FTP sync-state file. Login and installation both need HTTPS, so enable an SSL certificate on the hosting first.
+- The deploy action keeps a `.ftp-deploy-sync-state.json` file on the server to know what changed. If you upload files by hand, delete that file so the next deploy uploads everything.
+- Run the **charts** workflow once by hand after the first deploy. Until then, the empty search shows "charts not available".
+- A tab still open on an older version reloads itself if one of its pages no longer exists after a deploy.
+
+## Project structure
+
+Spoticast is an Nx standalone workspace (React 19, Vite, Tailwind CSS v4, React Router, TanStack Query, zustand, Vitest, Storybook). See [CLAUDE.md](CLAUDE.md) for the architecture and conventions.
+
 ```
-
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
-
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+src/app/        shell (navigation, banners), router, shared UI
+src/features/   home, podcast, player, queue, archive, filters, search, settings, auth
+src/lib/        Spotify client and auth, filter engine, charts, persisted stores
+scripts/        fetch-charts.mjs (used by the charts workflow)
+.github/        deploy and charts workflows
 ```
-
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/getting-started/tutorials/react-standalone-tutorial?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)

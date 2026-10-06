@@ -2,6 +2,10 @@ import type { Dictionary } from './en';
 
 export const it: Dictionary = {
   appName: 'Spoticast',
+  a11y: {
+    skipToContent: 'Vai al contenuto',
+    loading: 'Caricamento',
+  },
   nav: {
     podcasts: 'Podcast',
     filters: 'Filtri',
@@ -35,6 +39,14 @@ export const it: Dictionary = {
     skipForward: 'Salta avanti',
     seconds: '{{count}} s',
     searchSection: 'Ricerca',
+    app: 'App',
+    install: 'Installa Spoticast',
+    installHint: "Usala come un'app, dalla schermata Home o dal dock.",
+    installIos:
+      'Su iPhone e iPad: tocca Condividi e poi “Aggiungi alla schermata Home”.',
+    installed: 'Spoticast è installata',
+    installUnavailable:
+      'Apri Spoticast in Chrome, Edge o Safari per installarla.',
     account: 'Account',
     logout: 'Esci',
   },
@@ -42,6 +54,15 @@ export const it: Dictionary = {
     generic: 'Qualcosa è andato storto. Riprova.',
     loadFailed: 'Impossibile caricare i dati da Spotify.',
     retry: 'Riprova',
+    notAllowlisted:
+      "Il tuo account Spotify non è ancora abilitato per questa app. Finché l'app è in Development Mode, il proprietario deve aggiungere la tua email nella Spotify Developer Dashboard (massimo 5 utenti).",
+    rateLimited:
+      'Spotify sta ricevendo troppe richieste. Riprova tra un minuto.',
+    offline: 'Sei offline: mostro i dati salvati.',
+    crashTitle: 'Si è rotto qualcosa',
+    crashHint:
+      "Ricarica l'app per continuare. Coda e impostazioni sono al sicuro.",
+    reload: 'Ricarica',
   },
   home: {
     empty: 'Non segui ancora nessun podcast',
@@ -125,6 +146,9 @@ export const it: Dictionary = {
     playingOn: 'In riproduzione su {{name}}',
     closeVideo: 'Chiudi video',
     upNext: 'In coda',
+    premiumBanner:
+      'La riproduzione in questo browser richiede Spotify Premium. Puoi comunque controllare Spotify sugli altri dispositivi.',
+    dismiss: 'Chiudi',
   },
   queue: {
     empty: 'La coda è vuota',

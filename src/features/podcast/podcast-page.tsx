@@ -19,6 +19,7 @@ import EpisodeActions from '../player/episode-actions';
 import { flattenEpisodes, useShow, useShowEpisodes } from '../library/queries';
 import EpisodeRow from './episode-row';
 import PodcastHero from './podcast-hero';
+import { useErrorText } from '../../lib/spotify/errors';
 
 type Tab = 'unplayed' | 'archived';
 
@@ -40,6 +41,7 @@ function useAutoLoad(enabled: boolean, load: () => void) {
 }
 
 export function PodcastPage() {
+  const errorText = useErrorText();
   const { showId = '' } = useParams();
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -90,7 +92,7 @@ export function PodcastPage() {
           ) : show.isError ? (
             <EmptyState
               title={t('errors.loadFailed')}
-              description={show.error.message}
+              description={errorText(show.error)}
             />
           ) : (
             <div className="aspect-square w-36 animate-pulse rounded-xl bg-surface-2 lg:w-full" />
@@ -131,7 +133,7 @@ export function PodcastPage() {
                 label={t('filters.filter')}
                 aria-pressed={filtered}
                 onClick={() => setFilterOpen(true)}
-                className={filtered ? 'bg-accent/20 text-accent' : ''}
+                className={filtered ? 'bg-accent/20 text-accent-ink' : ''}
               >
                 <SlidersHorizontal />
               </IconButton>
@@ -160,7 +162,7 @@ export function PodcastPage() {
             ) : episodesQuery.isError && loaded.length === 0 ? (
               <EmptyState
                 title={t('errors.loadFailed')}
-                description={episodesQuery.error.message}
+                description={errorText(episodesQuery.error)}
               />
             ) : visible.length === 0 && !hasNextPage ? (
               filtered ? (

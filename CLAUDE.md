@@ -26,11 +26,11 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
 - `vite.config.mts` sets `watch: false`, so `nx test` runs once and exits.
 - Tests are collected from `{src,tests}/**/*.{test,spec}.*`, with Vitest globals (`describe`, `it`, `expect`) on. `src/test-setup.ts` loads jest-dom matchers and i18n, stubs `matchMedia` and clears localStorage after each test. Components that use router hooks or `<Link>` must be rendered inside `<MemoryRouter>` (or `createMemoryRouter` + `RouterProvider` for data-router APIs) in tests.
 - i18n defaults to the browser language; jsdom reports `en-US`, so tests assert on English strings.
-- Storybook picks up stories under `src/**` (`.storybook/main.ts`) and reuses `vite.config.mts`.
+- Storybook picks up stories under `src/**` (`.storybook/main.ts`) and reuses `vite.config.mts` without the PWA and `.htaccess` plugins. `.storybook/preview.tsx` provides i18n, styles, a router, a QueryClient, and theme/language toolbar switches. Seed zustand stores in a story's `beforeEach`.
 
 ## Structure and conventions
 
-- Entry: `src/main.tsx` mounts `<App>` in `StrictMode`. `src/app/app.tsx` applies theme/language preferences and renders a `RouterProvider`. Routes are declared in `src/app/router.tsx` (`createBrowserRouter`, with `basename` taken from Vite's `BASE_URL`); a data router is required for `<Link viewTransition>`.
+- Entry: `src/main.tsx` mounts `<App>` in `StrictMode`. `src/app/app.tsx` applies theme/language preferences and renders a `RouterProvider`. Routes are declared in `src/app/router.tsx` (`createBrowserRouter`, with `basename` taken from Vite's `BASE_URL`); a data router is required for `<Link viewTransition>`. Every page except the home is code-split with the route `lazy` option, and `RouteError` reloads once when a deploy removed an old chunk.
 - Layout:
   - `src/app/shell/`: app shell (bottom nav on mobile, sidebar from `lg`).
   - `src/app/ui/`: shared UI primitives.
@@ -38,7 +38,7 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
   - `src/lib/spotify/`: Web API client and PKCE auth.
   - `src/lib/storage/`: zustand stores persisted to localStorage under `spoticast.*` keys.
   - `src/i18n/`: typed `en`/`it` dictionaries; `en.ts` is the source of truth for keys.
-- Theming: color tokens are CSS variables in `src/styles.css`, exposed to Tailwind via `@theme inline` (`bg-surface`, `text-fg-muted`, `bg-brand`, …). Use them instead of raw colors. `data-theme` on `<html>` switches dark/light. `--accent` is overridden per screen with the cover's dominant color.
+- Theming: color tokens are CSS variables in `src/styles.css`, exposed to Tailwind via `@theme inline` (`bg-surface`, `text-fg-muted`, `bg-brand`, …). Use them instead of raw colors. `data-theme` on `<html>` switches dark/light. `--accent` is overridden per screen with the cover's dominant color. Use `text-accent-ink` (not `text-accent`) for text tinted with it: it is mixed towards white or black for contrast. Colors are checked with axe in both themes, so keep text tokens at 4.5:1 or more.
 - Spotify Web API: it follows the February 2026 Development Mode rules. Library writes go through `PUT`/`DELETE /me/library`, playlist contents through `/playlists/{id}/items`, search returns at most 10 results per page, and there are no batch fetch endpoints.
 - Environment: copy `.env.example` to `.env` and set `VITE_SPOTIFY_CLIENT_ID`. `VITE_BASE` sets the deploy base path (default `/`). Spotify rejects `localhost` redirect URIs, so the dev server runs on `127.0.0.1`.
 - Deploy (`.github/workflows/`):

@@ -15,6 +15,7 @@ import {
 } from '../library/queries';
 import ShowGrid from './show-grid';
 import { sortShows } from './sort-shows';
+import { useErrorText } from '../../lib/spotify/errors';
 
 function GridSkeleton() {
   return (
@@ -27,6 +28,7 @@ function GridSkeleton() {
 }
 
 export function HomePage() {
+  const errorText = useErrorText();
   const { t, i18n } = useTranslation();
   const { view, sort, manualOrder, setView, setSort, setManualOrder } =
     useLibraryPrefs();
@@ -87,7 +89,7 @@ export function HomePage() {
         ) : saved.isError && !saved.data ? (
           <EmptyState
             title={t('errors.loadFailed')}
-            description={saved.error.message}
+            description={errorText(saved.error)}
             action={
               <button
                 type="button"

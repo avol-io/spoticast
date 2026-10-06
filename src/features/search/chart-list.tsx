@@ -8,7 +8,7 @@ function MoveBadge({ move }: { move: ChartMove }) {
   const { t } = useTranslation();
   if (move === 'NEW') {
     return (
-      <span className="shrink-0 rounded bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold text-brand uppercase">
+      <span className="shrink-0 rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold text-brand-fg uppercase">
         {t('search.moveNew')}
       </span>
     );

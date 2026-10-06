@@ -34,7 +34,7 @@ export function FilterSummary({ criteria, onClear }: FilterSummaryProps) {
       {parts.map((part) => (
         <span
           key={part}
-          className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent"
+          className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent-ink"
         >
           {part}
         </span>

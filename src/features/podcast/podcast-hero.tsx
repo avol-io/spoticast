@@ -68,7 +68,7 @@ export function PodcastHero({ show }: PodcastHeroProps) {
         />
         <div className="min-w-0 flex-1">
           {isVideoShow(show) && (
-            <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent">
+            <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent-ink">
               <Video className="size-3.5" aria-hidden />
               {t('podcast.video')}
             </span>
@@ -92,7 +92,7 @@ export function PodcastHero({ show }: PodcastHeroProps) {
             disabled={follow.isPending}
             onClick={() => follow.mutate({ show, follow: !following })}
             className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-              following ? 'bg-surface-3 text-fg' : 'bg-accent text-white'
+              following ? 'bg-surface-3 text-fg' : 'bg-fg text-bg'
             }`}
           >
             {following ? (

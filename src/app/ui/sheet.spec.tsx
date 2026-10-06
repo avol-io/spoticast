@@ -26,4 +26,24 @@ describe('Sheet', () => {
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('keeps Tab focus inside the dialog', async () => {
+    render(
+      <>
+        <button type="button">outside</button>
+        <Sheet open onClose={vi.fn()} label="Dialog">
+          <button type="button">first</button>
+          <button type="button">last</button>
+        </Sheet>
+      </>,
+    );
+    await userEvent.tab();
+    expect(screen.getByRole('button', { name: 'first' })).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByRole('button', { name: 'last' })).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByRole('button', { name: 'first' })).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'last' })).toHaveFocus();
+  });
 });

@@ -42,7 +42,7 @@ describe('MiniPlayer', () => {
     );
     expect(skip).toHaveBeenCalledWith(30);
     await userEvent.click(
-      screen.getByRole('button', { name: 'Open player: Episode title' }),
+      screen.getByRole('button', { name: /Open player:\s*Episode title/ }),
     );
     expect(usePlayer.getState().fullPlayerOpen).toBe(true);
   });

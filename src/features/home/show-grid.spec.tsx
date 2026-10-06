@@ -43,3 +43,26 @@ describe('ShowGrid', () => {
     expect(screen.getByText('Alpha')).toBeInTheDocument();
   });
 });
+
+describe('ShowGrid (custom order)', () => {
+  it('loads the sortable grid with draggable items', async () => {
+    const router = createMemoryRouter([
+      {
+        path: '/',
+        element: (
+          <ShowGrid
+            shows={shows}
+            layout="grid"
+            badges={new Map()}
+            latest={new Map()}
+            onReorder={vi.fn()}
+          />
+        ),
+      },
+    ]);
+    render(<RouterProvider router={router} />);
+    const items = await screen.findAllByRole('button', { name: /Alpha|Beta/ });
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveAttribute('aria-roledescription', 'sortable');
+  });
+});

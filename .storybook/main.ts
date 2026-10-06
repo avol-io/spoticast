@@ -6,6 +6,19 @@ import type { StorybookConfig } from '@storybook/react-vite';
 const config: StorybookConfig = {
   stories: ['../src/**/*.@(mdx|stories.@(js|jsx|ts|tsx))'],
   addons: [getAbsolutePath('@storybook/addon-vitest')],
+  // The app's PWA and .htaccess plugins only make sense for the app build.
+  viteFinal: (config) => ({
+    ...config,
+    plugins: (config.plugins ?? []).flat().filter((plugin) => {
+      const name =
+        plugin && typeof plugin === 'object' && 'name' in plugin
+          ? String(plugin.name)
+          : '';
+      return (
+        !name.startsWith('vite-plugin-pwa') && name !== 'spoticast:htaccess'
+      );
+    }),
+  }),
   framework: {
     name: getAbsolutePath('@storybook/react-vite'),
     options: {
@@ -21,7 +34,3 @@ function getAbsolutePath(value: string): any {
 }
 
 export default config;
-
-// To customize your Vite configuration you can use the viteFinal field.
-// Check https://storybook.js.org/docs/react/builders/vite#configuration
-// and https://nx.dev/recipes/storybook/custom-builder-configs

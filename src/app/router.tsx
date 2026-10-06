@@ -1,35 +1,68 @@
+import type { ComponentType } from 'react';
 import {
   createBrowserRouter,
   Navigate,
+  type LazyRouteFunction,
   type RouteObject,
 } from 'react-router-dom';
 import CallbackPage from '../features/auth/callback-page';
 import RequireAuth from '../features/auth/require-auth';
-import FiltersPage from '../features/filters/filters-page';
-import SmartListPage from '../features/filters/smart-list-page';
 import HomePage from '../features/home/home-page';
-import PodcastPage from '../features/podcast/podcast-page';
-import QueuePage from '../features/queue/queue-page';
-import SearchPage from '../features/search/search-page';
-import SettingsPage from '../features/settings/settings-page';
 import AppShell from './shell/app-shell';
+import RouteError from './ui/route-error';
+
+/** Code-splits a page: its chunk loads on first navigation. */
+const page =
+  (
+    load: () => Promise<{ default: ComponentType }>,
+  ): LazyRouteFunction<RouteObject> =>
+  async () => ({ Component: (await load()).default });
+
+function PageFallback() {
+  return <div className="min-h-dvh" aria-busy="true" />;
+}
 
 export const routes: RouteObject[] = [
-  { path: '/callback', element: <CallbackPage /> },
+  {
+    path: '/callback',
+    element: <CallbackPage />,
+    errorElement: <RouteError />,
+  },
   {
     element: (
       <RequireAuth>
         <AppShell />
       </RequireAuth>
     ),
+    errorElement: <RouteError />,
+    HydrateFallback: PageFallback,
     children: [
+      // The home is the landing page: keep it in the main bundle.
       { index: true, element: <HomePage /> },
-      { path: 'podcast/:showId', element: <PodcastPage /> },
-      { path: 'filters', element: <FiltersPage /> },
-      { path: 'filters/:filterId', element: <SmartListPage /> },
-      { path: 'queue', element: <QueuePage /> },
-      { path: 'search', element: <SearchPage /> },
-      { path: 'settings', element: <SettingsPage /> },
+      {
+        path: 'podcast/:showId',
+        lazy: page(() => import('../features/podcast/podcast-page')),
+      },
+      {
+        path: 'filters',
+        lazy: page(() => import('../features/filters/filters-page')),
+      },
+      {
+        path: 'filters/:filterId',
+        lazy: page(() => import('../features/filters/smart-list-page')),
+      },
+      {
+        path: 'queue',
+        lazy: page(() => import('../features/queue/queue-page')),
+      },
+      {
+        path: 'search',
+        lazy: page(() => import('../features/search/search-page')),
+      },
+      {
+        path: 'settings',
+        lazy: page(() => import('../features/settings/settings-page')),
+      },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

@@ -18,6 +18,7 @@ import type {
 import EpisodeActions from '../player/episode-actions';
 import EpisodeRow from '../podcast/episode-row';
 import ShowResultRow from './show-result-row';
+import { useErrorText } from '../../lib/spotify/errors';
 
 /** Search episodes carry no show: fetch it (cached) to show and queue them. */
 function EpisodeResult({ episode }: { episode: SimplifiedEpisode }) {
@@ -50,6 +51,7 @@ export interface SearchResultsProps {
 }
 
 export function SearchResults({ query, type, onOpen }: SearchResultsProps) {
+  const errorText = useErrorText();
   const { t } = useTranslation();
   const results = useInfiniteQuery({
     queryKey: ['search', type, query],
@@ -95,7 +97,7 @@ export function SearchResults({ query, type, onOpen }: SearchResultsProps) {
     return (
       <EmptyState
         title={t('errors.loadFailed')}
-        description={results.error.message}
+        description={errorText(results.error)}
       />
     );
   }

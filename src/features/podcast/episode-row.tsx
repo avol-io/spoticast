@@ -56,7 +56,7 @@ export function EpisodeRow({
         >
           <p className="flex flex-wrap items-center gap-x-1.5 text-xs font-medium text-fg-subtle">
             {eyebrow && (
-              <span className="truncate text-accent">{eyebrow} ·</span>
+              <span className="truncate text-accent-ink">{eyebrow} ·</span>
             )}
             <span>
               {formatReleaseDate(releaseDate(episode), i18n.language)}
@@ -73,11 +73,11 @@ export function EpisodeRow({
               </span>
             )}
           </p>
-          <h3
+          <h2
             className={`mt-0.5 font-semibold ${expanded ? '' : 'line-clamp-2'} ${played || status === 'pending' ? 'text-fg-muted' : ''}`}
           >
             {episode.name}
-          </h3>
+          </h2>
         </button>
         <div className="mt-1.5 flex items-center gap-2 text-xs text-fg-muted">
           {status === 'pending' ? (
@@ -107,6 +107,9 @@ export function EpisodeRow({
               <span
                 className="h-1 w-16 overflow-hidden rounded-full bg-surface-3"
                 role="progressbar"
+                aria-label={t('episode.remaining', {
+                  time: formatDuration(progress.remainingMs, i18n.language),
+                })}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(progress.fraction * 100)}

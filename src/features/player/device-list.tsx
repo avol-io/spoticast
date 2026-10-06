@@ -75,7 +75,7 @@ export function DeviceList({ onPicked }: { onPicked?: () => void }) {
                   onPicked?.();
                 }}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-                  active ? 'bg-accent/20 text-accent' : 'hover:bg-surface-3'
+                  active ? 'bg-accent/20 text-accent-ink' : 'hover:bg-surface-3'
                 }`}
               >
                 <Icon className="size-5 shrink-0" aria-hidden />

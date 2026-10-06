@@ -47,7 +47,7 @@ export function PlayButton({ episode, size = 'md' }: PlayButtonProps) {
       onClick={() => void (current ? togglePlay() : playEpisode(episode))}
       className={`inline-flex shrink-0 items-center justify-center rounded-full transition-transform active:scale-90 ${
         current
-          ? 'bg-accent text-white'
+          ? 'bg-fg text-bg ring-2 ring-accent ring-offset-2 ring-offset-bg'
           : 'bg-surface-3 text-fg hover:bg-fg hover:text-bg'
       } ${size === 'lg' ? 'size-12' : 'size-10'}`}
     >

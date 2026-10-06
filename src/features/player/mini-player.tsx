@@ -34,7 +34,6 @@ export function MiniPlayer() {
         <button
           type="button"
           onClick={() => setFullPlayerOpen(true)}
-          aria-label={`${t('player.open')}: ${np.name}`}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
           {np.image ? (
@@ -47,10 +46,11 @@ export function MiniPlayer() {
             <div className="size-11 shrink-0 rounded-lg bg-surface-3" />
           )}
           <span className="min-w-0">
+            <span className="sr-only">{t('player.open')}: </span>
             <span className="block truncate text-sm font-semibold">
               {np.name}
             </span>
-            <span className="block truncate text-xs text-fg-muted">
+            <span className="block truncate text-xs text-fg">
               {np.isLocal
                 ? np.showName
                 : t('player.playingOn', { name: np.deviceName })}

@@ -14,7 +14,7 @@ export function Toaster() {
         <div
           key={t.id}
           className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl px-4 py-3 text-sm shadow-2xl ${
-            t.tone === 'error' ? 'bg-danger text-white' : 'bg-fg text-bg'
+            t.tone === 'error' ? 'bg-danger text-danger-fg' : 'bg-fg text-bg'
           }`}
         >
           <span className="flex-1">{t.message}</span>

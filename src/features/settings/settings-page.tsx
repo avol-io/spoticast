@@ -1,9 +1,10 @@
-import { Archive, LogOut, RefreshCw } from 'lucide-react';
+import { Archive, Check, Download, LogOut, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '../../app/ui/page-header';
 import SegmentedControl from '../../app/ui/segmented-control';
 import { logout } from '../../lib/spotify/auth';
+import { isIos, promptInstall, useInstall } from '../../lib/pwa/install';
 import {
   MAX_ARCHIVE_ATTEMPTS,
   useArchiveStore,
@@ -35,6 +36,44 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
       <span className="font-medium">{label}</span>
       {children}
     </div>
+  );
+}
+
+function InstallSection() {
+  const { t } = useTranslation();
+  const { prompt, installed } = useInstall();
+
+  return (
+    <Section title={t('settings.app')}>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        {installed ? (
+          <p className="flex items-center gap-2 font-medium text-success">
+            <Check className="size-4" aria-hidden />
+            {t('settings.installed')}
+          </p>
+        ) : (
+          <>
+            <p className="min-w-0 flex-1 text-sm text-fg-muted">
+              {prompt
+                ? t('settings.installHint')
+                : isIos()
+                  ? t('settings.installIos')
+                  : t('settings.installUnavailable')}
+            </p>
+            {prompt && (
+              <button
+                type="button"
+                onClick={() => void promptInstall()}
+                className="flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-fg"
+              >
+                <Download className="size-4" aria-hidden />
+                {t('settings.install')}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </Section>
   );
 }
 
@@ -155,6 +194,8 @@ export function SettingsPage() {
           </Section>
 
           <ArchiveSection />
+
+          <InstallSection />
 
           <Section title={t('settings.account')}>
             <button

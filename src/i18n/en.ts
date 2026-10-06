@@ -1,5 +1,9 @@
 export const en = {
   appName: 'Spoticast',
+  a11y: {
+    skipToContent: 'Skip to content',
+    loading: 'Loading',
+  },
   nav: {
     podcasts: 'Podcasts',
     filters: 'Filters',
@@ -33,6 +37,13 @@ export const en = {
     skipForward: 'Skip forward',
     seconds: '{{count}} s',
     searchSection: 'Search',
+    app: 'App',
+    install: 'Install Spoticast',
+    installHint: 'Use it like an app, from your home screen or dock.',
+    installIos: 'On iPhone and iPad: tap Share, then “Add to Home Screen”.',
+    installed: 'Spoticast is installed',
+    installUnavailable:
+      'Open Spoticast in Chrome, Edge or Safari to install it.',
     account: 'Account',
     logout: 'Log out',
   },
@@ -40,6 +51,14 @@ export const en = {
     generic: 'Something went wrong. Try again.',
     loadFailed: "Couldn't load data from Spotify.",
     retry: 'Retry',
+    notAllowlisted:
+      'Your Spotify account is not enabled for this app yet. While the app is in Development Mode, its owner must add your email in the Spotify Developer Dashboard (up to 5 users).',
+    rateLimited:
+      'Spotify is receiving too many requests. Try again in a minute.',
+    offline: 'You are offline: showing saved data.',
+    crashTitle: 'Something broke',
+    crashHint: 'Reload the app to continue. Your queue and settings are safe.',
+    reload: 'Reload',
   },
   home: {
     empty: "You don't follow any podcast yet",
@@ -122,6 +141,9 @@ export const en = {
     playingOn: 'Playing on {{name}}',
     closeVideo: 'Close video',
     upNext: 'Up Next',
+    premiumBanner:
+      'Playback in this browser needs Spotify Premium. You can still control Spotify on your other devices.',
+    dismiss: 'Dismiss',
   },
   queue: {
     empty: 'Up Next is empty',

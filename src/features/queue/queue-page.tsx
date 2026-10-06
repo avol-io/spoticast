@@ -37,6 +37,7 @@ import EpisodeRow from '../podcast/episode-row';
 import { moveInQueue, removeFromQueue, useQueue } from './queue';
 import { useQueueStore } from './queue-store';
 import SyncDialog from './sync-dialog';
+import { useErrorText } from '../../lib/spotify/errors';
 
 function QueueItem({
   episode,
@@ -97,6 +98,7 @@ function QueueItem({
 }
 
 export function QueuePage() {
+  const errorText = useErrorText();
   const { t, i18n } = useTranslation();
   const queue = useQueue();
   const nowPlayingUri = usePlayer((s) => s.nowPlaying?.uri);
@@ -160,7 +162,7 @@ export function QueuePage() {
           ) : queue.isError && !queue.data ? (
             <EmptyState
               title={t('errors.loadFailed')}
-              description={queue.error.message}
+              description={errorText(queue.error)}
               action={
                 <button
                   type="button"

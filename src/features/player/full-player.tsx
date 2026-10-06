@@ -155,7 +155,7 @@ export function FullPlayer() {
                 <Link
                   to={`/podcast/${np.showId}`}
                   onClick={close}
-                  className="mt-1 inline-block font-medium text-accent hover:underline"
+                  className="mt-1 inline-block font-medium text-accent-ink hover:underline"
                 >
                   {np.showName}
                 </Link>
