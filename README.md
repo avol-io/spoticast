@@ -54,12 +54,32 @@ npx nx serve                # http://127.0.0.1:4200
 
 ## Deploy (tophost.it, FTP)
 
-Two GitHub Actions workflows publish the site over FTP. Both upload only what changed, and they never run at the same time.
+The site has two channels, each installable as its own app:
 
-| Workflow     | When                              | What it does                                                                                            |
-| ------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `deploy.yml` | push to `main`, or manual         | Runs lint, type-check, tests and the build, then uploads the changed files. It never touches `charts/`. |
-| `charts.yml` | every day at 05:17 UTC, or manual | Downloads the charts, then uploads only `public/charts/` to `charts/` on the server. No build.          |
+| Channel    | URL                       | Server folder | Published by                             |
+| ---------- | ------------------------- | ------------- | ---------------------------------------- |
+| production | https://spoticast.it      | site root     | a GitHub **release** `vX.Y.Z`            |
+| beta       | https://beta.spoticast.it | `beta/`       | a GitHub **pre-release** `vX.Y.Z-beta.N` |
+
+GitHub Actions workflows check and publish the site. The FTP ones upload only what changed, and never run at the same time.
+
+| Workflow     | When                                      | What it does                                                                                                                     |
+| ------------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`     | push to `main`, pull requests             | Checks formatting, runs lint, type-check, tests and the build. It never deploys.                                                 |
+| `deploy.yml` | a release is published, or manual (a tag) | Runs lint, type-check and tests on the tag, builds it for its channel and uploads the changed files. It never touches `charts/`. |
+| `charts.yml` | every day at 05:17 UTC, or manual         | Downloads the charts, then uploads only `public/charts/` to `charts/` and `beta/charts/` on the server. No build.                |
+
+### Releasing
+
+1. On GitHub, go to **Releases → Draft a new release**, create the tag on the commit to ship and click **Generate release notes**.
+2. For the beta, name the tag `vX.Y.Z-beta.N` and tick **Set as a pre-release**. For production, name it `vX.Y.Z` and leave it unticked.
+3. Publish. `deploy.yml` checks that the tag matches the pre-release flag, then deploys.
+
+To promote a tested beta, publish a new release `vX.Y.Z` on the same commit. To redeploy an existing release, run `deploy.yml` by hand with its tag.
+
+The tag becomes the app version: Settings shows it with a link to the release notes, and the update banner names the new version. Local builds show `git describe --tags` (or `dev` when there are no tags).
+
+### Setup
 
 In the repository, go to **Settings → Secrets and variables → Actions** and configure:
 
@@ -71,12 +91,20 @@ In the repository, go to **Settings → Secrets and variables → Actions** and 
 | `VITE_SPOTIFY_CLIENT_ID` | variable | Client ID of the Spotify app                                             |
 | `FTP_SERVER_DIR`         | variable | Site folder on the server, ending with `/` (default `./`, e.g. `./www/`) |
 | `FTP_PROTOCOL`           | variable | `ftps` (default) or `ftp` if the host has no FTP over TLS                |
-| `VITE_BASE`              | variable | Path the app is served from (default `/`)                                |
+| `VITE_BASE`              | variable | Path production is served from (default `/`)                             |
+
+Deploys run in the GitHub environments `beta` and `production`, created on the first deploy. To require an approval before production deploys, add **required reviewers** to the `production` environment.
+
+For the beta:
+
+- On the hosting, point the subdomain `beta.spoticast.it` to the **site root**, and make sure the SSL certificate covers it. The root `.htaccess` serves it from the `beta/` folder; `spoticast.it/beta/` answers 404.
+- In the Spotify Dashboard, add `https://beta.spoticast.it/callback` as a redirect URI.
+- The beta has its own login and local data, but uses the same Spotify account data as production: the Up Next playlist and the smart filter playlists are shared.
 
 Notes:
 
-- The build writes an Apache `.htaccess` file. It redirects to HTTPS, serves `index.html` for app routes, sets long caching for hashed assets and no caching for the shell, service worker and charts, and hides the FTP sync-state file. Login and installation both need HTTPS, so enable an SSL certificate on the hosting first.
-- The deploy action keeps a `.ftp-deploy-sync-state.json` file on the server to know what changed. If you upload files by hand, delete that file so the next deploy uploads everything.
+- The build writes an Apache `.htaccess` file. It redirects to HTTPS, serves `index.html` for app routes, sets long caching for hashed assets and no caching for the shell, service worker, `version.json` and charts, and hides the FTP sync-state file. The production one also hands `beta.<domain>` to the `beta/` folder; the beta one adds `noindex`. Login and installation both need HTTPS, so enable an SSL certificate on the hosting first.
+- The deploy action keeps a `.ftp-deploy-sync-state.json` file in each folder on the server to know what changed. If you upload files by hand, delete that file so the next deploy uploads everything.
 - Run the **charts** workflow once by hand after the first deploy. Until then, the empty search shows "charts not available".
 - A tab still open on an older version reloads itself if one of its pages no longer exists after a deploy.
 
@@ -89,5 +117,5 @@ src/app/        shell (navigation, banners), router, shared UI
 src/features/   home, podcast, player, queue, archive, filters, search, settings, auth
 src/lib/        Spotify client and auth, filter engine, charts, persisted stores
 scripts/        fetch-charts.mjs (used by the charts workflow)
-.github/        deploy and charts workflows
+.github/        ci, deploy and charts workflows
 ```

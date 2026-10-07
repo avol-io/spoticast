@@ -6,7 +6,8 @@ import type { StorybookConfig } from '@storybook/react-vite';
 const config: StorybookConfig = {
   stories: ['../src/**/*.@(mdx|stories.@(js|jsx|ts|tsx))'],
   addons: [getAbsolutePath('@storybook/addon-vitest')],
-  // The app's PWA and .htaccess plugins only make sense for the app build.
+  // The app's PWA, .htaccess and version.json plugins only make sense for the
+  // app build.
   viteFinal: (config) => ({
     ...config,
     plugins: (config.plugins ?? []).flat().filter((plugin) => {
@@ -15,7 +16,9 @@ const config: StorybookConfig = {
           ? String(plugin.name)
           : '';
       return (
-        !name.startsWith('vite-plugin-pwa') && name !== 'spoticast:htaccess'
+        !name.startsWith('vite-plugin-pwa') &&
+        name !== 'spoticast:htaccess' &&
+        name !== 'spoticast:version'
       );
     }),
   }),

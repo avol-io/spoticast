@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { queryClient } from '../lib/query/query-client';
+import { act, render, screen } from '@testing-library/react';
+import { persister, queryClient } from '../lib/query/query-client';
 import { useAuth } from '../lib/spotify/auth';
 
 import App from './app';
@@ -11,6 +11,10 @@ vi.mock('../features/player/player-runtime', () => ({ default: () => null }));
 
 describe('App', () => {
   beforeEach(() => {
+    // Restoring from IndexedDB can settle after the test environment is torn
+    // down, and then updates React without a window: keep it in memory.
+    vi.spyOn(persister, 'restoreClient').mockResolvedValue(undefined);
+    vi.spyOn(persister, 'persistClient').mockResolvedValue(undefined);
     // Never hit the real Spotify API: the home loads the followed shows.
     vi.stubGlobal(
       'fetch',
@@ -26,16 +30,18 @@ describe('App', () => {
     useAuth.setState({ tokens: null });
     queryClient.clear();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  it('asks to log in when logged out', () => {
+  it('asks to log in when logged out', async () => {
     render(<App />);
+    await act(async () => undefined);
     expect(
       screen.getByRole('button', { name: /log in with spotify/i }),
     ).toBeInTheDocument();
   });
 
-  it('shows the podcasts home when logged in', () => {
+  it('shows the podcasts home when logged in', async () => {
     useAuth.setState({
       tokens: {
         accessToken: 'a',
@@ -45,6 +51,7 @@ describe('App', () => {
       },
     });
     render(<App />);
+    await act(async () => undefined);
     expect(
       screen.getByRole('heading', { level: 1, name: 'Podcasts' }),
     ).toBeInTheDocument();
