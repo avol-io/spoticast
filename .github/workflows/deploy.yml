@@ -1,13 +1,13 @@
-# Deploys a GitHub Release to the FTP hosting (tophost.it):
-#   pre-release vX.Y.Z-beta.N → beta channel, beta/ folder (beta.spoticast.it)
-#   release     vX.Y.Z        → production, site root (spoticast.it)
-# The root .htaccess hands beta.<domain> to the beta/ folder (vite.config.mts).
+# Deploys a GitHub Release to its channel:
+#   pre-release vX.Y.Z-beta.N → beta, GitHub Pages (avol-io.github.io/spoticast)
+#   release     vX.Y.Z        → production, FTP hosting (tophost.it, spoticast.it)
 # To promote a tested beta, publish a new release vX.Y.Z on the same commit.
 # Run it by hand with a tag to redeploy an existing release.
 #
-# Only files that changed since the last deploy are uploaded (the action keeps
-# a sync-state file in each folder). The charts/ folders are managed by the
-# charts workflow and are never touched here.
+# Production uploads only the files that changed since the last deploy (the
+# action keeps a sync-state file on the server). The charts/ folder is managed
+# by the charts workflow and is never touched here. The beta downloads a
+# snapshot of the charts at deploy time.
 #
 # Repository settings → Secrets and variables → Actions:
 #   secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
@@ -15,6 +15,8 @@
 #              FTP_SERVER_DIR (default "./"; the site root, e.g. "./www/")
 #              FTP_PROTOCOL (default "ftps"; "ftp" if the host has no TLS)
 #              VITE_BASE (default "/"; production only)
+# Repository settings → Pages: source "GitHub Actions". Environments →
+# github-pages: allow the tags "v*" to deploy (by default only main can).
 name: deploy
 
 on:
@@ -27,21 +29,23 @@ on:
         required: true
         type: string
 
-# One FTP session at a time, shared with the charts workflow.
-concurrency:
-  group: ftp
-  cancel-in-progress: false
-
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Pages deploys must run in the github-pages environment. Production holds
+    # one FTP session at a time, shared with the charts workflow.
     environment:
-      name: ${{ (github.event.release.prerelease || contains(inputs.tag, '-')) && 'beta' || 'production' }}
-      url: ${{ (github.event.release.prerelease || contains(inputs.tag, '-')) && 'https://beta.spoticast.it' || 'https://spoticast.it' }}
+      name: ${{ (github.event.release.prerelease || contains(inputs.tag, '-')) && 'github-pages' || 'production' }}
+      url: ${{ steps.pages.outputs.page_url || 'https://spoticast.it' }}
+    concurrency:
+      group: ${{ (github.event.release.prerelease || contains(inputs.tag, '-')) && 'pages' || 'ftp' }}
+      cancel-in-progress: false
     steps:
       - name: Resolve release channel
         id: release
@@ -63,19 +67,18 @@ jobs:
               echo "::error::$TAG is a pre-release: tag beta versions vX.Y.Z-beta.N."
               exit 1
             fi
-            CHANNEL=beta DIR=beta/
+            CHANNEL=beta
           else
             if [[ "$TAG" == *-* ]]; then
               echo "::error::$TAG looks like a beta: mark the release as pre-release."
               exit 1
             fi
-            CHANNEL=production DIR=
+            CHANNEL=production
           fi
           echo "Deploying $TAG to the $CHANNEL channel."
           {
             echo "tag=$TAG"
             echo "channel=$CHANNEL"
-            echo "dir=$DIR"
           } >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
@@ -94,18 +97,43 @@ jobs:
         env:
           NX_NO_CLOUD: true
 
+      # A snapshot, so that Search has charts: they are not refreshed daily.
+      - name: Download charts (beta)
+        if: steps.release.outputs.channel == 'beta'
+        continue-on-error: true
+        run: node scripts/fetch-charts.mjs
+
       - name: Build
         run: npx nx build
         env:
           NX_NO_CLOUD: true
           VITE_SPOTIFY_CLIENT_ID: ${{ vars.VITE_SPOTIFY_CLIENT_ID }}
-          # The beta is the root of its subdomain.
-          VITE_BASE: ${{ steps.release.outputs.channel == 'beta' && '/' || vars.VITE_BASE || '/' }}
+          # The beta is served from /<repository>/ on GitHub Pages.
+          VITE_BASE: ${{ steps.release.outputs.channel == 'beta' && format('/{0}/', github.event.repository.name) || vars.VITE_BASE || '/' }}
           VITE_CHANNEL: ${{ steps.release.outputs.channel }}
           APP_VERSION: ${{ steps.release.outputs.tag }}
           APP_RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.release.outputs.tag }}
 
-      - name: Upload changed files via FTP
+      # Pages has no .htaccess: 404.html is its single-page app fallback.
+      - name: Prepare for GitHub Pages (beta)
+        if: steps.release.outputs.channel == 'beta'
+        run: |
+          cp dist/spoticast/index.html dist/spoticast/404.html
+          rm dist/spoticast/.htaccess
+
+      - name: Upload to GitHub Pages (beta)
+        if: steps.release.outputs.channel == 'beta'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/spoticast/
+
+      - name: Deploy to GitHub Pages (beta)
+        if: steps.release.outputs.channel == 'beta'
+        id: pages
+        uses: actions/deploy-pages@v4
+
+      - name: Upload changed files via FTP (production)
+        if: steps.release.outputs.channel == 'production'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -113,9 +141,8 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
           local-dir: dist/spoticast/
-          server-dir: ${{ vars.FTP_SERVER_DIR || './' }}${{ steps.release.outputs.dir }}
+          server-dir: ${{ vars.FTP_SERVER_DIR || './' }}
           exclude: |
             **/.git*
             **/.git*/**
             charts/**
-            beta/**

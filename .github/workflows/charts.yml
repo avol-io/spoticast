@@ -1,7 +1,7 @@
 # Refreshes the Top/Trending podcast charts shown in Search when the search
 # field is empty. It only downloads the charts and uploads public/charts/ to
-# the charts/ folders of production and of the beta channel (beta/charts/,
-# served as beta.<domain>/charts/): no build, no full deploy.
+# the charts/ folder on the FTP hosting: no build, no full deploy. (The beta on
+# GitHub Pages gets a snapshot at each deploy instead.)
 #
 # Uses the same secrets/variables as deploy.yml (FTP_*).
 name: charts
@@ -41,13 +41,3 @@ jobs:
           protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
           local-dir: public/charts/
           server-dir: ${{ vars.FTP_SERVER_DIR || './' }}charts/
-
-      - name: Upload charts for the beta channel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
-          local-dir: public/charts/
-          server-dir: ${{ vars.FTP_SERVER_DIR || './' }}beta/charts/

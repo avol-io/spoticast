@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Spoticast is an installable PWA that acts as a Pocket Casts–style client for Spotify podcasts. It is a React 19 single-page app in an **Nx standalone workspace** (one project, `spoticast`, rooted at the repo root — no `apps/` or `libs/` folders). The bundler is Vite (with `vite-plugin-pwa`), styling uses Tailwind CSS v4, routing uses React Router 6 data routers, tests run on Vitest with jsdom, and Storybook 10 is configured. There is no backend: Spotify auth is OAuth PKCE in the browser, and the app is deployed as static files over FTP to tophost.it (Apache).
+Spoticast is an installable PWA that acts as a Pocket Casts–style client for Spotify podcasts. It is a React 19 single-page app in an **Nx standalone workspace** (one project, `spoticast`, rooted at the repo root — no `apps/` or `libs/` folders). The bundler is Vite (with `vite-plugin-pwa`), styling uses Tailwind CSS v4, routing uses React Router 6 data routers, tests run on Vitest with jsdom, and Storybook 10 is configured. There is no backend: Spotify auth is OAuth PKCE in the browser, and the app is deployed as static files: production over FTP to tophost.it (Apache), the beta to GitHub Pages.
 
 ## Commands
 
@@ -43,14 +43,14 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
 - Environment: copy `.env.example` to `.env` and set `VITE_SPOTIFY_CLIENT_ID`. `VITE_BASE` sets the deploy base path (default `/`). Spotify rejects `localhost` redirect URIs, so the dev server runs on `127.0.0.1`.
 - Deploy (`.github/workflows/`):
   - `ci.yml` (push to `main`, pull requests) checks formatting, lint, types, tests and the build. It never deploys.
-  - `deploy.yml` runs when a GitHub Release is published. A pre-release `vX.Y.Z-beta.N` goes to the beta channel (`beta/` folder, served as `beta.spoticast.it`), a release `vX.Y.Z` to production (site root). It checks that the tag matches the pre-release flag, builds with `VITE_CHANNEL`, `APP_VERSION` (the tag) and `APP_RELEASE_URL`, and uploads only the changed files over FTP. It excludes `charts/` and `beta/`.
-  - `charts.yml` (daily) runs `scripts/fetch-charts.mjs` and uploads only `public/charts/` to `charts/` and `beta/charts/` on the server, without building.
-  - The build writes an Apache `.htaccess` (SPA fallback, HTTPS, caching) from `vite.config.mts`. The production one rewrites `beta.<domain>` into `beta/`; the beta one has `RewriteBase /beta/` (its Vite base stays `/`), answers 404 to other hosts and sends `noindex`.
+  - `deploy.yml` runs when a GitHub Release is published. A pre-release `vX.Y.Z-beta.N` goes to the beta channel on GitHub Pages (`https://avol-io.github.io/spoticast/`, base `/spoticast/`), a release `vX.Y.Z` to production over FTP (site root). It checks that the tag matches the pre-release flag and builds with `VITE_CHANNEL`, `APP_VERSION` (the tag) and `APP_RELEASE_URL`. Production uploads only the changed files and excludes `charts/`. The beta downloads a charts snapshot before the build, copies `index.html` to `404.html` (the SPA fallback on Pages) and drops `.htaccess`.
+  - `charts.yml` (daily) runs `scripts/fetch-charts.mjs` and uploads only `public/charts/` to `charts/` on the FTP server, without building.
+  - The build writes an Apache `.htaccess` (SPA fallback, HTTPS, caching) from `vite.config.mts`.
   - `public/charts/` is gitignored. Run `npm run charts` (optionally `npm run charts -- it us`) to get chart data locally.
 - Channels and versions:
-  - `VITE_CHANNEL=beta` builds the beta: "Spoticast Beta" manifest and title, icons from `public/icons-beta/` (regenerate with `npx pwa-assets-generator --config pwa-assets-beta.config.ts`), a Beta badge and "Spoticast Beta" as the Connect device name. Read the channel from `src/lib/build-info.ts` (`IS_BETA`, `APP_BUILD`, `LOGO_URL`), never from `__APP_BUILD__` directly.
+  - `VITE_CHANNEL=beta` builds the beta: "Spoticast Beta" manifest and title, `noindex`, icons from `public/icons-beta/` (regenerate with `npx pwa-assets-generator --config pwa-assets-beta.config.ts`), a Beta badge and "Spoticast Beta" as the Connect device name. Read the channel from `src/lib/build-info.ts` (`IS_BETA`, `APP_BUILD`, `LOGO_URL`), never from `__APP_BUILD__` directly.
   - The build writes `version.json` (version, sha, date, channel, release URL). When a new service worker is waiting, `src/lib/pwa/update.ts` reads it to name the new version.
-  - The beta is a separate origin, so its local data is separate, but it shares the Spotify Up Next and smart filter playlists with production.
+  - The beta is a separate origin (GitHub Pages), so its local data is separate, but it shares the Spotify Up Next and smart filter playlists with production.
 - Playback and Up Next:
   - Up Next is the user's private Spotify playlist "Spoticast". It is found or created by `ensureQueuePlaylist()` and edited only through the serialized helpers in `src/features/queue/queue.ts`, which update the cache optimistically and roll back on errors.
   - Episodes are played as that playlist's context, so the queue keeps going after the current episode. Issue playback commands only through `src/features/player/player-controller.ts`, which covers both the Web Playback SDK (this browser) and Spotify Connect (other devices).
