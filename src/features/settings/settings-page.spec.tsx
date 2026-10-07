@@ -8,8 +8,24 @@ import * as controller from '../player/player-controller';
 
 import SettingsPage from './settings-page';
 
+const build = vi.hoisted(() => ({
+  beta: false,
+  releaseUrl: undefined as string | undefined,
+}));
+vi.mock('../../lib/build-info', () => ({
+  get APP_BUILD() {
+    return { ...__APP_BUILD__, releaseUrl: build.releaseUrl };
+  },
+  get IS_BETA() {
+    return build.beta;
+  },
+}));
+
 describe('SettingsPage', () => {
-  afterEach(() => act(() => update.resetUpdate()));
+  afterEach(() => {
+    act(() => update.resetUpdate());
+    Object.assign(build, { beta: false, releaseUrl: undefined });
+  });
 
   it('updates the theme and skip intervals', async () => {
     render(<SettingsPage />);
@@ -68,6 +84,10 @@ describe('SettingsPage', () => {
     update.useUpdate.setState({ available: true });
     render(<SettingsPage />);
     expect(screen.getByText(new RegExp(__APP_BUILD__.sha))).toBeInTheDocument();
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Release notes' }),
+    ).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole('button', { name: 'Check for updates' }),
     );
@@ -81,5 +101,28 @@ describe('SettingsPage', () => {
     expect(screen.getByText('A new version is ready.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Update' }));
     expect(apply).toHaveBeenCalled();
+  });
+
+  it('marks beta builds and links the release notes', () => {
+    Object.assign(build, {
+      beta: true,
+      releaseUrl: 'https://example.com/v1.0.0-beta.1',
+    });
+    render(<SettingsPage />);
+    expect(screen.getByText('Beta')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Release notes' })).toHaveAttribute(
+      'href',
+      'https://example.com/v1.0.0-beta.1',
+    );
+  });
+
+  it('names the version waiting to be applied', () => {
+    update.useUpdate.setState({
+      available: true,
+      needRefresh: true,
+      next: { version: 'v2.0.0' },
+    });
+    render(<SettingsPage />);
+    expect(screen.getByText('Version v2.0.0 is ready.')).toBeInTheDocument();
   });
 });

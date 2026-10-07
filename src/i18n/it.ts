@@ -2,6 +2,7 @@ import type { Dictionary } from './en';
 
 export const it: Dictionary = {
   appName: 'Spoticast',
+  beta: 'Beta',
   a11y: {
     skipToContent: 'Vai al contenuto',
     loading: 'Caricamento',
@@ -52,6 +53,7 @@ export const it: Dictionary = {
   },
   update: {
     available: 'È disponibile una nuova versione di Spoticast.',
+    availableVersion: 'È disponibile Spoticast {{version}}.',
     apply: 'Aggiorna',
     dismiss: 'Chiudi',
     version: 'Versione',
@@ -61,6 +63,9 @@ export const it: Dictionary = {
     downloading: "Download dell'aggiornamento…",
     error: 'Impossibile cercare aggiornamenti.',
     ready: 'Una nuova versione è pronta.',
+    readyVersion: 'La versione {{version}} è pronta.',
+    releaseNotes: 'Note di rilascio',
+    whatsNew: 'Novità',
     stopsPlayback: 'La riproduzione in questo browser si fermerà.',
   },
   errors: {

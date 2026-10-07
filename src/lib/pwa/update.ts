@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { APP_BUILD, type BuildInfo } from '../build-info';
 
 /** How often a long-running app asks the server for a new service worker. */
 export const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
@@ -13,6 +14,8 @@ interface UpdateState {
   checking: boolean;
   /** Outcome of the last manual check, shown in Settings. */
   lastCheck?: 'upToDate' | 'downloading' | 'error';
+  /** Version waiting to be applied, read from the deployed version.json. */
+  next?: Pick<BuildInfo, 'version' | 'releaseUrl'>;
 }
 
 export const useUpdate = create<UpdateState>()(() => ({
@@ -57,6 +60,31 @@ export function watchForUpdates(
 
 export function markUpdateReady() {
   useUpdate.setState({ needRefresh: true, lastCheck: undefined });
+  void loadNextVersion();
+}
+
+/**
+ * Names the waiting version. Left unset when version.json can't be read or
+ * still describes the running build (the FTP upload isn't atomic, so sw.js
+ * may land before version.json): the UI then shows a generic message.
+ */
+async function loadNextVersion(): Promise<void> {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}version.json`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return;
+    const { version, releaseUrl } = (await res.json()) as Partial<BuildInfo>;
+    if (typeof version !== 'string' || version === APP_BUILD.version) return;
+    useUpdate.setState({
+      next: {
+        version,
+        releaseUrl: typeof releaseUrl === 'string' ? releaseUrl : undefined,
+      },
+    });
+  } catch {
+    // Offline or not deployed (dev server): keep the generic message.
+  }
 }
 
 /** Manual check from Settings. */
@@ -65,13 +93,12 @@ export async function checkForUpdate(): Promise<void> {
   useUpdate.setState({ checking: true, lastCheck: undefined });
   try {
     await registration.update();
-    if (useUpdate.getState().needRefresh || registration.waiting) {
-      useUpdate.setState({ needRefresh: true });
-    } else {
+    if (useUpdate.getState().needRefresh) return;
+    if (registration.waiting) markUpdateReady();
+    else
       useUpdate.setState({
         lastCheck: registration.installing ? 'downloading' : 'upToDate',
       });
-    }
   } catch {
     useUpdate.setState({ lastCheck: 'error' });
   } finally {
@@ -99,5 +126,6 @@ export function resetUpdate() {
     dismissed: false,
     checking: false,
     lastCheck: undefined,
+    next: undefined,
   });
 }

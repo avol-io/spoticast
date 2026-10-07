@@ -46,6 +46,7 @@ export function StatusBanners() {
   );
   const playingHere = usePlayer(selectPlayingHere);
   const showUpdate = useUpdate((s) => s.needRefresh && !s.dismissed);
+  const next = useUpdate((s) => s.next);
   const [dismissed, setDismissed] = useState(readDismissed);
 
   return (
@@ -65,7 +66,24 @@ export function StatusBanners() {
           className="flex items-center gap-3 bg-surface-3 px-4 py-2 text-xs text-fg"
         >
           <RefreshCw className="size-3.5 shrink-0" aria-hidden />
-          <p className="flex-1">{t('update.available')}</p>
+          <p className="flex-1">
+            {next
+              ? t('update.availableVersion', { version: next.version })
+              : t('update.available')}
+            {next?.releaseUrl && (
+              <>
+                {' '}
+                <a
+                  href={next.releaseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold underline"
+                >
+                  {t('update.whatsNew')}
+                </a>
+              </>
+            )}
+          </p>
           <button
             type="button"
             onClick={() => void applyUpdate()}

@@ -61,12 +61,56 @@ function buildSha(): string {
   }
 }
 
+/**
+ * Release version: the deploy workflow passes the release tag in APP_VERSION;
+ * local builds describe HEAD from the nearest tag (e.g. v1.2.0-3-gabc1234).
+ */
+function buildVersion(): string {
+  if (process.env.APP_VERSION) return process.env.APP_VERSION;
+  try {
+    return execSync('git describe --tags', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return 'dev';
+  }
+}
+
+export type Channel = 'production' | 'beta';
+
+export interface BuildInfo {
+  version: string;
+  sha: string;
+  date: string;
+  channel: Channel;
+  /** GitHub Release page of the version (set by the deploy workflow). */
+  releaseUrl?: string;
+}
+
+/** Served next to the app so a running version can tell what was deployed. */
+function versionFile(info: BuildInfo): Plugin {
+  return {
+    name: 'spoticast:version',
+    apply: 'build',
+    closeBundle() {
+      writeFileSync(
+        resolve(import.meta.dirname, outDir, 'version.json'),
+        `${JSON.stringify(info, null, 2)}\n`,
+      );
+    },
+  };
+}
+
 function apacheConfig(base: string): Plugin {
   return {
     name: 'spoticast:htaccess',
     apply: 'build',
     closeBundle() {
-      writeFileSync(resolve(import.meta.dirname, outDir, '.htaccess'), htaccess(base));
+      writeFileSync(
+        resolve(import.meta.dirname, outDir, '.htaccess'),
+        htaccess(base),
+      );
     },
   };
 }
@@ -74,15 +118,19 @@ function apacheConfig(base: string): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, import.meta.dirname, 'VITE_');
   const base = env.VITE_BASE || '/';
+  const build: BuildInfo = {
+    version: buildVersion(),
+    sha: buildSha(),
+    date: new Date().toISOString(),
+    channel: env.VITE_CHANNEL === 'beta' ? 'beta' : 'production',
+    releaseUrl: process.env.APP_RELEASE_URL || undefined,
+  };
 
   return {
     root: import.meta.dirname,
     base,
     define: {
-      __APP_BUILD__: JSON.stringify({
-        sha: buildSha(),
-        date: new Date().toISOString(),
-      }),
+      __APP_BUILD__: JSON.stringify(build),
     },
     cacheDir: './node_modules/.vite/spoticast',
     // Spotify rejects "localhost" redirect URIs: use the loopback IP instead.
@@ -127,7 +175,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/callback/],
+          navigateFallbackDenylist: [new RegExp(`^${base}callback`)],
           runtimeCaching: [
             {
               // Cover art from Spotify's image CDN.
@@ -152,6 +200,7 @@ export default defineConfig(({ mode }) => {
         },
       }),
       apacheConfig(base),
+      versionFile(build),
     ],
     build: {
       outDir,

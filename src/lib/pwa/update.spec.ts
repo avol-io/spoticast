@@ -29,6 +29,7 @@ describe('update', () => {
     resetUpdate();
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('checks every hour, on return to the foreground and when back online', () => {
@@ -98,5 +99,46 @@ describe('update', () => {
     expect(useUpdate.getState().dismissed).toBe(true);
     await applyUpdate();
     expect(activate).toHaveBeenCalled();
+  });
+
+  it('names the waiting version from the deployed version.json', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          version: 'v9.0.0',
+          releaseUrl:
+            'https://github.com/avol-io/spoticast/releases/tag/v9.0.0',
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    markUpdateReady();
+    await vi.waitFor(() =>
+      expect(useUpdate.getState().next).toEqual({
+        version: 'v9.0.0',
+        releaseUrl: 'https://github.com/avol-io/spoticast/releases/tag/v9.0.0',
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith('/version.json', {
+      cache: 'no-store',
+    });
+  });
+
+  it('keeps the generic message when version.json is stale or missing', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ version: __APP_BUILD__.version })),
+      )
+      .mockResolvedValueOnce(new Response('', { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+    markUpdateReady();
+    markUpdateReady();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r));
+    expect(useUpdate.getState()).toMatchObject({
+      needRefresh: true,
+      next: undefined,
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { Archive, Check, Download, LogOut, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import BetaBadge from '../../app/ui/beta-badge';
 import PageHeader from '../../app/ui/page-header';
 import SegmentedControl from '../../app/ui/segmented-control';
 import { logout } from '../../lib/spotify/auth';
@@ -14,6 +15,7 @@ import { runArchiveSync } from '../player/player-controller';
 import MarketSelect from '../search/market-select';
 import { selectPlayingHere, usePlayer } from '../player/player-store';
 import { useSettings } from '../../lib/storage/settings';
+import { APP_BUILD, IS_BETA } from '../../lib/build-info';
 
 const SKIP_BACK = [5, 10, 15, 30];
 const SKIP_FORWARD = [15, 30, 45, 60];
@@ -81,22 +83,37 @@ function InstallSection() {
 
 function UpdateRow() {
   const { t, i18n } = useTranslation();
-  const { available, needRefresh, checking, lastCheck } = useUpdate();
+  const { available, needRefresh, checking, lastCheck, next } = useUpdate();
   const playingHere = usePlayer(selectPlayingHere);
   const built = new Intl.DateTimeFormat(i18n.language, {
     dateStyle: 'medium',
-  }).format(new Date(__APP_BUILD__.date));
+  }).format(new Date(APP_BUILD.date));
   const status = needRefresh
-    ? t('update.ready')
+    ? next
+      ? t('update.readyVersion', { version: next.version })
+      : t('update.ready')
     : lastCheck && t(`update.${lastCheck}`);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{t('update.version')}</p>
-        <p className="text-sm text-fg-muted">
-          {__APP_BUILD__.sha} · {built}
+        <p className="flex items-center gap-2 font-medium">
+          {t('update.version')}
+          {IS_BETA && <BetaBadge />}
         </p>
+        <p className="text-sm text-fg-muted">
+          {APP_BUILD.version} · {APP_BUILD.sha} · {built}
+        </p>
+        {APP_BUILD.releaseUrl && (
+          <a
+            href={APP_BUILD.releaseUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-brand underline"
+          >
+            {t('update.releaseNotes')}
+          </a>
+        )}
         {status && (
           <p role="status" className="text-sm text-fg-muted">
             {status}

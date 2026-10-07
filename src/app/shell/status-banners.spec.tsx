@@ -66,4 +66,21 @@ describe('StatusBanners', () => {
     );
     expect(screen.queryByText(/new version/)).not.toBeInTheDocument();
   });
+
+  it('names the new version and links its release notes', () => {
+    act(() =>
+      update.useUpdate.setState({
+        needRefresh: true,
+        next: { version: 'v2.0.0', releaseUrl: 'https://example.com/v2.0.0' },
+      }),
+    );
+    render(<StatusBanners />);
+    expect(
+      screen.getByText(/Spoticast v2\.0\.0 is available/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: "What's new" })).toHaveAttribute(
+      'href',
+      'https://example.com/v2.0.0',
+    );
+  });
 });

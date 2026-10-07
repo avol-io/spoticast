@@ -1,5 +1,6 @@
 export const en = {
   appName: 'Spoticast',
+  beta: 'Beta',
   a11y: {
     skipToContent: 'Skip to content',
     loading: 'Loading',
@@ -49,6 +50,7 @@ export const en = {
   },
   update: {
     available: 'A new version of Spoticast is available.',
+    availableVersion: 'Spoticast {{version}} is available.',
     apply: 'Update',
     dismiss: 'Dismiss',
     version: 'Version',
@@ -58,6 +60,9 @@ export const en = {
     downloading: 'Downloading the update…',
     error: "Couldn't check for updates.",
     ready: 'A new version is ready.',
+    readyVersion: 'Version {{version}} is ready.',
+    releaseNotes: 'Release notes',
+    whatsNew: "What's new",
     stopsPlayback: 'Playback in this browser will stop.',
   },
   errors: {
