@@ -102,6 +102,26 @@ function versionFile(info: BuildInfo): Plugin {
   };
 }
 
+/**
+ * The beta build is a separate installable app: its own name, and the icons
+ * generated in public/icons-beta/ (pwa-assets-beta.config.ts).
+ */
+function betaIdentity(): Plugin {
+  return {
+    name: 'spoticast:beta-identity',
+    transformIndexHtml: {
+      order: 'pre',
+      handler: (html) =>
+        html
+          .replace('<title>Spoticast</title>', '<title>Spoticast Beta</title>')
+          .replace(
+            /href="\/(favicon\.ico|logo\.svg|apple-touch-icon-180x180\.png)"/g,
+            'href="/icons-beta/$1"',
+          ),
+    },
+  };
+}
+
 function apacheConfig(base: string): Plugin {
   return {
     name: 'spoticast:htaccess',
@@ -125,6 +145,8 @@ export default defineConfig(({ mode }) => {
     channel: env.VITE_CHANNEL === 'beta' ? 'beta' : 'production',
     releaseUrl: process.env.APP_RELEASE_URL || undefined,
   };
+  const beta = build.channel === 'beta';
+  const icons = beta ? 'icons-beta/' : '';
 
   return {
     root: import.meta.dirname,
@@ -145,15 +167,20 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      beta && betaIdentity(),
       VitePWA({
         // The new service worker waits until the user taps "Update" (see
         // src/lib/pwa/update.ts, which also registers it).
         registerType: 'prompt',
         injectRegister: false,
-        includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
+        includeAssets: [
+          `${icons}favicon.ico`,
+          `${icons}apple-touch-icon-180x180.png`,
+        ],
         manifest: {
-          name: 'Spoticast',
-          short_name: 'Spoticast',
+          id: base,
+          name: beta ? 'Spoticast Beta' : 'Spoticast',
+          short_name: beta ? 'Spoticast β' : 'Spoticast',
           description: 'Podcast client for Spotify',
           theme_color: '#0f1115',
           background_color: '#0f1115',
@@ -162,11 +189,19 @@ export default defineConfig(({ mode }) => {
           start_url: base,
           scope: base,
           icons: [
-            { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
-            { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-            { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+            { src: `${icons}pwa-64x64.png`, sizes: '64x64', type: 'image/png' },
             {
-              src: 'maskable-icon-512x512.png',
+              src: `${icons}pwa-192x192.png`,
+              sizes: '192x192',
+              type: 'image/png',
+            },
+            {
+              src: `${icons}pwa-512x512.png`,
+              sizes: '512x512',
+              type: 'image/png',
+            },
+            {
+              src: `${icons}maskable-icon-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',

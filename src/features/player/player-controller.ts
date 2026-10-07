@@ -39,9 +39,10 @@ import {
   syncNextArchived,
   type ArchiveSyncDeps,
 } from '../archive/archive-sync';
+import { IS_BETA } from '../../lib/build-info';
 import { loadPlaybackSdk } from './sdk';
 
-export const LOCAL_DEVICE_NAME = 'Spoticast';
+export const LOCAL_DEVICE_NAME = IS_BETA ? 'Spoticast Beta' : 'Spoticast';
 
 let player: Spotify.Player | null = null;
 let lastFinished: { uri: string; at: number } | null = null;

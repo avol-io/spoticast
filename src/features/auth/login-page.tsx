@@ -1,6 +1,8 @@
 import { LogIn } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import BetaBadge from '../../app/ui/beta-badge';
+import { IS_BETA, LOGO_URL } from '../../lib/build-info';
 import { clientId, login, redirectUri } from '../../lib/spotify/auth';
 
 export function LoginPage() {
@@ -10,14 +12,11 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklab,var(--brand)_25%,transparent),transparent_60%)] px-6 text-center">
-      <img
-        src={`${import.meta.env.BASE_URL}logo.svg`}
-        alt=""
-        className="size-24 drop-shadow-xl"
-      />
+      <img src={LOGO_URL} alt="" className="size-24 drop-shadow-xl" />
       <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-extrabold tracking-tight">
+        <h1 className="flex items-center justify-center gap-3 text-4xl font-extrabold tracking-tight">
           {t('appName')}
+          {IS_BETA && <BetaBadge />}
         </h1>
         <p className="text-fg-muted">{t('auth.tagline')}</p>
       </div>
