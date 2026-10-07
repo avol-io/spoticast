@@ -1,0 +1,103 @@
+# Every push to develop publishes a beta, with no manual step:
+#   1. runs the ci checks (ci.yml);
+#   2. tags the commit vX.Y.Z-beta.N: X.Y.Z is the minor after the latest
+#      production release (1.0.0 before the first one), or the repository
+#      variable NEXT_VERSION when it is higher (e.g. 2.0.0 for a major); N
+#      counts up from 1 for each X.Y.Z;
+#   3. deploys the tag to GitHub Pages (deploy.yml), with the commits since the
+#      previous tag as the app's "what's new" link.
+# Only a tag is created, no GitHub Release. Production stays manual: merge
+# develop into main and publish a release vX.Y.Z.
+#
+# Settings → Environments → github-pages must allow the branch develop (the
+# deploy runs from this push) besides the tags v*.
+name: beta
+
+on:
+  push:
+    branches: [develop]
+    paths-ignore:
+      - '**.md'
+
+# One beta at a time, so two pushes never get the same number. A push that
+# arrives while one is waiting replaces it: the newest commit wins.
+concurrency:
+  group: beta
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: ./.github/workflows/ci.yml
+
+  tag:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+      release_url: ${{ steps.next.outputs.release_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # all tags, to number the beta
+
+      - name: Tag the next beta
+        id: next
+        env:
+          NEXT_VERSION: ${{ vars.NEXT_VERSION }}
+        run: |
+          # Reuse the beta tag of this commit when the run is retried.
+          tag=$(git tag -l --points-at "$GITHUB_SHA" 'v*-beta.*' | sort -V | tail -n1)
+          if [ -z "$tag" ]; then
+            # Base: the minor after the latest production release (1.0.0 before the
+            # first one), or NEXT_VERSION when it is higher (e.g. for a major).
+            stable=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)
+            if [ -n "$stable" ]; then
+              IFS=. read -r major minor _ <<< "${stable#v}"
+              base="$major.$((minor + 1)).0"
+            else
+              base=1.0.0
+            fi
+            if [ -n "${NEXT_VERSION:-}" ]; then
+              if [[ ! "$NEXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "::error::NEXT_VERSION must be X.Y.Z, not $NEXT_VERSION."
+                exit 1
+              fi
+              if [ "$(printf '%s\n' "$base" "$NEXT_VERSION" | sort -V | tail -n1)" = "$NEXT_VERSION" ]; then
+                base=$NEXT_VERSION
+              fi
+            fi
+            last=$(git tag -l "v$base-beta.*" | sed "s/^v$base-beta\.//" | grep -E '^[0-9]+$' | sort -n | tail -n1 || true)
+            tag="v$base-beta.$((${last:-0} + 1))"
+            git tag "$tag" "$GITHUB_SHA"
+            git push origin "refs/tags/$tag"
+          fi
+          # "What's new" link of the app: the commits since the previous tag.
+          previous=$(git describe --tags --abbrev=0 --match 'v*' "$tag^" 2>/dev/null || true)
+          if [ -n "$previous" ]; then
+            url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$previous...$tag"
+          else
+            url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commits/$tag"
+          fi
+          echo "Beta $tag ($url)"
+          {
+            echo "tag=$tag"
+            echo "release_url=$url"
+          } >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: tag
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+      release_url: ${{ needs.tag.outputs.release_url }}
+    secrets: inherit

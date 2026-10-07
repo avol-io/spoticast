@@ -1,8 +1,9 @@
-# Deploys a GitHub Release to its channel:
-#   pre-release vX.Y.Z-beta.N → beta, GitHub Pages (avol-io.github.io/spoticast)
-#   release     vX.Y.Z        → production, FTP hosting (tophost.it, spoticast.it)
-# To promote a tested beta, publish a new release vX.Y.Z on the same commit.
-# Run it by hand with a tag to redeploy an existing release.
+# Deploys a tag to its channel:
+#   vX.Y.Z-beta.N → beta, GitHub Pages (www.avol.io/spoticast)
+#   vX.Y.Z        → production, FTP hosting (tophost.it, spoticast.it)
+# Betas come from beta.yml on every push to develop (or from a pre-release);
+# production from a published release vX.Y.Z. Run it by hand with a tag to
+# redeploy it.
 #
 # Production uploads only the files that changed since the last deploy (the
 # action keeps a sync-state file on the server). The charts/ folder is managed
@@ -25,8 +26,17 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to redeploy (e.g. v1.4.0 or v1.4.0-beta.1)
+        description: Tag to redeploy (e.g. v1.4.0 or v1.4.0-beta.1)
         required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      release_url:
+        description: Link to what's new in the app (default the tag's page)
+        required: false
         type: string
 
 permissions:
@@ -50,30 +60,23 @@ jobs:
       - name: Resolve release channel
         id: release
         env:
-          GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
           PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
-            PRERELEASE=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
-              --json isPrerelease --jq .isPrerelease)
-          fi
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
-            echo "::error::Tag $TAG must be vX.Y.Z (release) or vX.Y.Z-beta.N (pre-release)."
+            echo "::error::Tag $TAG must be vX.Y.Z (production) or vX.Y.Z-beta.N (beta)."
             exit 1
           fi
-          if [ "$PRERELEASE" = true ]; then
-            if [[ "$TAG" != *-beta.* ]]; then
+          if [[ "$TAG" == *-beta.* ]]; then CHANNEL=beta; else CHANNEL=production; fi
+          if [ "$GITHUB_EVENT_NAME" = release ]; then
+            if [ "$PRERELEASE" = true ] && [ "$CHANNEL" != beta ]; then
               echo "::error::$TAG is a pre-release: tag beta versions vX.Y.Z-beta.N."
               exit 1
             fi
-            CHANNEL=beta
-          else
-            if [[ "$TAG" == *-* ]]; then
+            if [ "$PRERELEASE" != true ] && [ "$CHANNEL" = beta ]; then
               echo "::error::$TAG looks like a beta: mark the release as pre-release."
               exit 1
             fi
-            CHANNEL=production
           fi
           echo "Deploying $TAG to the $CHANNEL channel."
           {
@@ -112,7 +115,7 @@ jobs:
           VITE_BASE: ${{ steps.release.outputs.channel == 'beta' && format('/{0}/', github.event.repository.name) || vars.VITE_BASE || '/' }}
           VITE_CHANNEL: ${{ steps.release.outputs.channel }}
           APP_VERSION: ${{ steps.release.outputs.tag }}
-          APP_RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.release.outputs.tag }}
+          APP_RELEASE_URL: ${{ inputs.release_url || format('{0}/{1}/releases/tag/{2}', github.server_url, github.repository, steps.release.outputs.tag) }}
 
       # Pages has no .htaccess: 404.html is its single-page app fallback.
       - name: Prepare for GitHub Pages (beta)

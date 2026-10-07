@@ -42,8 +42,9 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
 - Spotify Web API: it follows the February 2026 Development Mode rules. Library writes go through `PUT`/`DELETE /me/library`, playlist contents through `/playlists/{id}/items`, search returns at most 10 results per page, and there are no batch fetch endpoints.
 - Environment: copy `.env.example` to `.env` and set `VITE_SPOTIFY_CLIENT_ID`. `VITE_BASE` sets the deploy base path (default `/`). Spotify rejects `localhost` redirect URIs, so the dev server runs on `127.0.0.1`.
 - Deploy (`.github/workflows/`):
-  - `ci.yml` (push to `main`, pull requests) checks formatting, lint, types, tests and the build. It never deploys.
-  - `deploy.yml` runs when a GitHub Release is published. A pre-release `vX.Y.Z-beta.N` goes to the beta channel on GitHub Pages (`https://avol-io.github.io/spoticast/`, base `/spoticast/`), a release `vX.Y.Z` to production over FTP (site root). It checks that the tag matches the pre-release flag and builds with `VITE_CHANNEL`, `APP_VERSION` (the tag) and `APP_RELEASE_URL`. Production uploads only the changed files and excludes `charts/`. The beta downloads a charts snapshot before the build, copies `index.html` to `404.html` (the SPA fallback on Pages) and drops `.htaccess`.
+  - `ci.yml` (push to `main`, pull requests, and called by `beta.yml`) checks formatting, lint, types, tests and the build. It never deploys.
+  - `beta.yml` (push to `develop`) runs `ci.yml`, tags the commit with the next `vX.Y.Z-beta.N` (minor after the latest `vX.Y.Z` tag, or the `NEXT_VERSION` variable when higher; N per base) and calls `deploy.yml` with the commits since the previous tag as release URL. No GitHub Release is created.
+  - `deploy.yml` deploys a tag: on a published release, when called by `beta.yml`, or by hand. `vX.Y.Z-beta.N` goes to the beta channel on GitHub Pages (`https://www.avol.io/spoticast/`, the account's custom Pages domain, base `/spoticast/`), `vX.Y.Z` to production over FTP (site root). For releases it checks that the tag matches the pre-release flag. It builds with `VITE_CHANNEL`, `APP_VERSION` (the tag) and `APP_RELEASE_URL`. Production uploads only the changed files and excludes `charts/`. The beta downloads a charts snapshot before the build, copies `index.html` to `404.html` (the SPA fallback on Pages) and drops `.htaccess`.
   - `charts.yml` (daily) runs `scripts/fetch-charts.mjs` and uploads only `public/charts/` to `charts/` on the FTP server, without building.
   - The build writes an Apache `.htaccess` (SPA fallback, HTTPS, caching) from `vite.config.mts`.
   - `public/charts/` is gitignored. Run `npm run charts` (optionally `npm run charts -- it us`) to get chart data locally.
@@ -62,6 +63,7 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
 - New React code should come from the Nx generators (`npx nx g @nx/react:component`, `@nx/react:lib`). Styling is Tailwind, so pass `--style=none` (e.g. `npx nx g @nx/react:component src/features/home/show-card --style=none --no-interactive`). Generated files are kebab-case with a colocated `.spec.tsx`.
 - Prettier style: single quotes, semicolons, trailing commas everywhere.
 - Commits follow Conventional Commits (commitizen with `cz-conventional-changelog` is configured, e.g. `feat: ...`).
+- Branches: day-to-day work goes to `develop`, and every push there publishes a beta. `main` holds what is released to production.
 
 ## Environment
 

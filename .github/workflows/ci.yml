@@ -1,11 +1,12 @@
-# Checks every push to main and every pull request. It never deploys: deploys
-# start from GitHub Releases (deploy.yml).
+# Checks every push to main and every pull request, and every push to develop
+# before its beta is tagged (beta.yml calls it). It never deploys.
 name: ci
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
 concurrency:
   group: ci-${{ github.ref }}

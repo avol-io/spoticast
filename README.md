@@ -56,28 +56,37 @@ npx nx serve                # http://127.0.0.1:4200
 
 The site has two channels, each installable as its own app:
 
-| Channel    | URL                                 | Hosting              | Published by                             |
-| ---------- | ----------------------------------- | -------------------- | ---------------------------------------- |
-| production | https://spoticast.it                | tophost.it, over FTP | a GitHub **release** `vX.Y.Z`            |
-| beta       | https://avol-io.github.io/spoticast | GitHub Pages         | a GitHub **pre-release** `vX.Y.Z-beta.N` |
+| Channel    | URL                           | Hosting              | Published by                                  |
+| ---------- | ----------------------------- | -------------------- | --------------------------------------------- |
+| production | https://spoticast.it          | tophost.it, over FTP | a GitHub **release** `vX.Y.Z`                 |
+| beta       | https://www.avol.io/spoticast | GitHub Pages         | every push to `develop` (tag `vX.Y.Z-beta.N`) |
 
 GitHub Actions workflows check and publish the site. The FTP uploads send only what changed, and never run at the same time.
 
-| Workflow     | When                                      | What it does                                                                                                                                                                                                       |
-| ------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ci.yml`     | push to `main`, pull requests             | Checks formatting, runs lint, type-check, tests and the build. It never deploys.                                                                                                                                   |
-| `deploy.yml` | a release is published, or manual (a tag) | Runs lint, type-check and tests on the tag and builds it for its channel. Production: uploads the changed files over FTP, never touching `charts/`. Beta: publishes to GitHub Pages with a snapshot of the charts. |
-| `charts.yml` | every day at 05:17 UTC, or manual         | Downloads the charts, then uploads only `public/charts/` to `charts/` on the FTP server. No build.                                                                                                                 |
+| Workflow     | When                                                            | What it does                                                                                                                                                                                                       |
+| ------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ci.yml`     | push to `main`, pull requests, called by `beta.yml`             | Checks formatting, runs lint, type-check, tests and the build. It never deploys.                                                                                                                                   |
+| `deploy.yml` | a release is published, called by `beta.yml`, or manual (a tag) | Runs lint, type-check and tests on the tag and builds it for its channel. Production: uploads the changed files over FTP, never touching `charts/`. Beta: publishes to GitHub Pages with a snapshot of the charts. |
+| `beta.yml`   | push to `develop` (not for `*.md` only)                         | Runs the `ci.yml` checks, tags the commit with the next `vX.Y.Z-beta.N` and deploys it with `deploy.yml`.                                                                                                          |
+| `charts.yml` | every day at 05:17 UTC, or manual                               | Downloads the charts, then uploads only `public/charts/` to `charts/` on the FTP server. No build.                                                                                                                 |
 
 ### Releasing
 
-1. On GitHub, go to **Releases → Draft a new release**, create the tag on the commit to ship and click **Generate release notes**.
-2. For the beta, name the tag `vX.Y.Z-beta.N` and tick **Set as a pre-release**. For production, name it `vX.Y.Z` and leave it unticked.
+**Beta (automatic).** Every push to `develop` that passes the checks is tagged `vX.Y.Z-beta.N` and deployed to the beta. No GitHub Release is created.
+
+- `X.Y.Z` is the minor after the latest production release (`v1.0.0` → `1.1.0`), or `1.0.0` before the first one. For another version, e.g. a major, set the repository variable `NEXT_VERSION` (e.g. `2.0.0`): it is used while it is higher than the computed one.
+- `N` counts up from 1 for each `X.Y.Z`. A failed check creates no tag, and a retried run reuses the commit's tag.
+- Pushes that only change Markdown files publish nothing.
+
+**Production (manual).**
+
+1. Merge `develop` into `main`.
+2. On GitHub, go to **Releases → Draft a new release**, create the tag `vX.Y.Z` on `main` (leave **Set as a pre-release** unticked) and click **Generate release notes**.
 3. Publish. `deploy.yml` checks that the tag matches the pre-release flag, then deploys.
 
-To promote a tested beta, publish a new release `vX.Y.Z` on the same commit. To redeploy an existing release, run `deploy.yml` by hand with its tag.
+A pre-release `vX.Y.Z-beta.N` published by hand also goes to the beta. To redeploy a tag, run `deploy.yml` by hand with it.
 
-The tag becomes the app version: Settings shows it with a link to the release notes, and the update banner names the new version. Local builds show `git describe --tags` (or `dev` when there are no tags).
+The tag becomes the app version: Settings shows it with a link to the release notes (for automatic betas, the commits since the previous tag), and the update banner names the new version. Local builds show `git describe --tags` (or `dev` when there are no tags).
 
 ### Setup
 
@@ -92,14 +101,15 @@ In the repository, go to **Settings → Secrets and variables → Actions** and 
 | `FTP_SERVER_DIR`         | variable | Site folder on the server, ending with `/` (default `./`, e.g. `./www/`) |
 | `FTP_PROTOCOL`           | variable | `ftps` (default) or `ftp` if the host has no FTP over TLS                |
 | `VITE_BASE`              | variable | Path production is served from (default `/`)                             |
+| `NEXT_VERSION`           | variable | Optional: base version of the automatic betas, e.g. `2.0.0`              |
 
 Production deploys run in the GitHub environment `production`, created on the first deploy. To require an approval before they run, add **required reviewers** to it.
 
 For the beta:
 
 - In **Settings → Pages**, set **Source** to **GitHub Actions**.
-- In **Settings → Environments → github-pages → Deployment branches and tags**, add a rule for the tags `v*`. By default only `main` can deploy to Pages, and releases deploy from tags.
-- In the Spotify Dashboard, add `https://avol-io.github.io/spoticast/callback` as a redirect URI.
+- In **Settings → Environments → github-pages → Deployment branches and tags**, add a rule for the branch `develop` (automatic betas) and one for the tags `v*` (pre-releases and manual redeploys). By default only `main` can deploy to Pages.
+- In the Spotify Dashboard, add `https://www.avol.io/spoticast/callback` as a redirect URI. The account's Pages sites use the custom domain `www.avol.io`: `avol-io.github.io/spoticast` redirects there.
 - The beta is a separate site, so it has its own login and local data. It uses the same Spotify account data as production: the Up Next playlist and the smart filter playlists are shared.
 - Its charts are a snapshot taken at deploy time. GitHub Pages caches files for about 10 minutes, so a new beta can take a few minutes to show up.
 
