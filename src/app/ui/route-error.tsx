@@ -6,8 +6,9 @@ import { useRouteError } from 'react-router-dom';
 const RELOAD_FLAG = 'spoticast.chunk-reload';
 
 /**
- * After a deploy the FTP sync deletes the old hashed chunks, so a tab still
- * running the previous version fails to lazy-load pages.
+ * After a deploy the FTP sync deletes the old hashed chunks. The service worker
+ * keeps serving them until the user applies the update, but a tab without one
+ * (first visit, unsupported browser) fails to lazy-load pages.
  */
 export function isStaleChunkError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');

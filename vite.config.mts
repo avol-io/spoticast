@@ -1,4 +1,5 @@
 /// <reference types='vitest' />
+import { execSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
@@ -50,6 +51,16 @@ AddType application/manifest+json .webmanifest
 `;
 }
 
+/** Short commit of the build, shown in Settings: CI sets GITHUB_SHA. */
+function buildSha(): string {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  } catch {
+    return 'dev';
+  }
+}
+
 function apacheConfig(base: string): Plugin {
   return {
     name: 'spoticast:htaccess',
@@ -67,6 +78,12 @@ export default defineConfig(({ mode }) => {
   return {
     root: import.meta.dirname,
     base,
+    define: {
+      __APP_BUILD__: JSON.stringify({
+        sha: buildSha(),
+        date: new Date().toISOString(),
+      }),
+    },
     cacheDir: './node_modules/.vite/spoticast',
     // Spotify rejects "localhost" redirect URIs: use the loopback IP instead.
     server: {
@@ -81,7 +98,10 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // The new service worker waits until the user taps "Update" (see
+        // src/lib/pwa/update.ts, which also registers it).
+        registerType: 'prompt',
+        injectRegister: false,
         includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
         manifest: {
           name: 'Spoticast',

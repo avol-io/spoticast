@@ -3,6 +3,7 @@ import * as ReactDOM from 'react-dom/client';
 import App from './app/app';
 import './i18n';
 import { listenForInstallPrompt } from './lib/pwa/install';
+import { registerServiceWorker } from './lib/pwa/register';
 import { loopbackUrl } from './lib/spotify/auth';
 
 // A view transition interrupted by a quicker navigation rejects its promises
@@ -25,6 +26,7 @@ if (loopback) {
   window.location.replace(loopback);
 } else {
   listenForInstallPrompt();
+  registerServiceWorker();
   const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement,
   );

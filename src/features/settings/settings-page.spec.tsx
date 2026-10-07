@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import * as update from '../../lib/pwa/update';
 import { useAuth } from '../../lib/spotify/auth';
 import { useSettings } from '../../lib/storage/settings';
 import { useArchiveStore } from '../archive/archive-store';
@@ -8,6 +9,8 @@ import * as controller from '../player/player-controller';
 import SettingsPage from './settings-page';
 
 describe('SettingsPage', () => {
+  afterEach(() => act(() => update.resetUpdate()));
+
   it('updates the theme and skip intervals', async () => {
     render(<SettingsPage />);
     await userEvent.click(screen.getByRole('radio', { name: 'Light' }));
@@ -58,5 +61,25 @@ describe('SettingsPage', () => {
     expect(useArchiveStore.getState().pending.a.attempts).toBe(0);
     expect(run).toHaveBeenCalled();
     useArchiveStore.setState({ pending: {} });
+  });
+
+  it('shows the build and checks for updates', async () => {
+    const check = vi.spyOn(update, 'checkForUpdate').mockResolvedValue();
+    update.useUpdate.setState({ available: true });
+    render(<SettingsPage />);
+    expect(screen.getByText(new RegExp(__APP_BUILD__.sha))).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Check for updates' }),
+    );
+    expect(check).toHaveBeenCalled();
+  });
+
+  it('applies a waiting update', async () => {
+    const apply = vi.spyOn(update, 'applyUpdate').mockResolvedValue();
+    update.useUpdate.setState({ available: true, needRefresh: true });
+    render(<SettingsPage />);
+    expect(screen.getByText('A new version is ready.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Update' }));
+    expect(apply).toHaveBeenCalled();
   });
 });

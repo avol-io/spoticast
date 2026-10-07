@@ -1,7 +1,11 @@
-import { CloudOff, X } from 'lucide-react';
+import { CloudOff, RefreshCw, X } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePlayer } from '../../features/player/player-store';
+import {
+  selectPlayingHere,
+  usePlayer,
+} from '../../features/player/player-store';
+import { applyUpdate, dismissUpdate, useUpdate } from '../../lib/pwa/update';
 
 function subscribeOnline(callback: () => void) {
   window.addEventListener('online', callback);
@@ -30,13 +34,18 @@ function readDismissed() {
   }
 }
 
-/** Offline notice and the "Premium required" notice of the browser player. */
+/**
+ * Offline notice, the "Premium required" notice of the browser player and the
+ * "new version" prompt (held back while audio plays here: updating reloads).
+ */
 export function StatusBanners() {
   const { t } = useTranslation();
   const online = useOnline();
   const premiumMissing = usePlayer(
     (s) => s.sdkError === 'player.premiumRequired',
   );
+  const playingHere = usePlayer(selectPlayingHere);
+  const showUpdate = useUpdate((s) => s.needRefresh && !s.dismissed);
   const [dismissed, setDismissed] = useState(readDismissed);
 
   return (
@@ -49,6 +58,30 @@ export function StatusBanners() {
           <CloudOff className="size-3.5" aria-hidden />
           {t('errors.offline')}
         </p>
+      )}
+      {showUpdate && !playingHere && (
+        <div
+          role="status"
+          className="flex items-center gap-3 bg-surface-3 px-4 py-2 text-xs text-fg"
+        >
+          <RefreshCw className="size-3.5 shrink-0" aria-hidden />
+          <p className="flex-1">{t('update.available')}</p>
+          <button
+            type="button"
+            onClick={() => void applyUpdate()}
+            className="rounded-full bg-brand px-3 py-1 font-semibold text-brand-fg"
+          >
+            {t('update.apply')}
+          </button>
+          <button
+            type="button"
+            aria-label={t('update.dismiss')}
+            onClick={dismissUpdate}
+            className="rounded-full p-1 text-fg-muted hover:text-fg"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
       )}
       {premiumMissing && !dismissed && (
         <div

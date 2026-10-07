@@ -5,13 +5,14 @@ import PageHeader from '../../app/ui/page-header';
 import SegmentedControl from '../../app/ui/segmented-control';
 import { logout } from '../../lib/spotify/auth';
 import { isIos, promptInstall, useInstall } from '../../lib/pwa/install';
+import { applyUpdate, checkForUpdate, useUpdate } from '../../lib/pwa/update';
 import {
   MAX_ARCHIVE_ATTEMPTS,
   useArchiveStore,
 } from '../archive/archive-store';
 import { runArchiveSync } from '../player/player-controller';
 import MarketSelect from '../search/market-select';
-import { usePlayer } from '../player/player-store';
+import { selectPlayingHere, usePlayer } from '../player/player-store';
 import { useSettings } from '../../lib/storage/settings';
 
 const SKIP_BACK = [5, 10, 15, 30];
@@ -73,7 +74,62 @@ function InstallSection() {
           </>
         )}
       </div>
+      <UpdateRow />
     </Section>
+  );
+}
+
+function UpdateRow() {
+  const { t, i18n } = useTranslation();
+  const { available, needRefresh, checking, lastCheck } = useUpdate();
+  const playingHere = usePlayer(selectPlayingHere);
+  const built = new Intl.DateTimeFormat(i18n.language, {
+    dateStyle: 'medium',
+  }).format(new Date(__APP_BUILD__.date));
+  const status = needRefresh
+    ? t('update.ready')
+    : lastCheck && t(`update.${lastCheck}`);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">{t('update.version')}</p>
+        <p className="text-sm text-fg-muted">
+          {__APP_BUILD__.sha} · {built}
+        </p>
+        {status && (
+          <p role="status" className="text-sm text-fg-muted">
+            {status}
+            {needRefresh && playingHere && ` ${t('update.stopsPlayback')}`}
+          </p>
+        )}
+      </div>
+      {needRefresh ? (
+        <button
+          type="button"
+          onClick={() => void applyUpdate()}
+          className="flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-fg"
+        >
+          <RefreshCw className="size-4" aria-hidden />
+          {t('update.apply')}
+        </button>
+      ) : (
+        available && (
+          <button
+            type="button"
+            disabled={checking}
+            onClick={() => void checkForUpdate()}
+            className="flex items-center gap-1.5 rounded-full bg-surface-3 px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+          >
+            <RefreshCw
+              className={`size-4 ${checking ? 'animate-spin' : ''}`}
+              aria-hidden
+            />
+            {checking ? t('update.checking') : t('update.check')}
+          </button>
+        )
+      )}
+    </div>
   );
 }
 

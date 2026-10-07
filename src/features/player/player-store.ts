@@ -34,3 +34,14 @@ export const usePlayer = create<PlayerState>()((set) => ({
   setFullPlayerOpen: (fullPlayerOpen) => set({ fullPlayerOpen }),
   setVideo: (video) => set({ video }),
 }));
+
+/** Audio is coming out of this browser: a reload would cut it off. */
+export function selectPlayingHere(s: PlayerState): boolean {
+  return (
+    s.archiveSyncing ||
+    (s.nowPlaying !== null &&
+      !s.nowPlaying.paused &&
+      s.nowPlaying.deviceId !== null &&
+      s.nowPlaying.deviceId === s.localDeviceId)
+  );
+}
