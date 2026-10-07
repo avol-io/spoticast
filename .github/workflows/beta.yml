@@ -6,6 +6,8 @@
 #      counts up from 1 for each X.Y.Z;
 #   3. deploys the tag to GitHub Pages (deploy.yml), with the commits since the
 #      previous tag as the app's "what's new" link.
+# Run it by hand on develop to publish a beta without a new commit (a push that
+# changes no file, like creating the branch, starts nothing).
 # Only a tag is created, no GitHub Release. Production stays manual: merge
 # develop into main and publish a release vX.Y.Z.
 #
@@ -18,6 +20,7 @@ on:
     branches: [develop]
     paths-ignore:
       - '**.md'
+  workflow_dispatch:
 
 # One beta at a time, so two pushes never get the same number. A push that
 # arrives while one is waiting replaces it: the newest commit wins.
@@ -30,6 +33,8 @@ permissions:
 
 jobs:
   check:
+    # Betas come only from develop, even when started by hand.
+    if: github.ref == 'refs/heads/develop'
     uses: ./.github/workflows/ci.yml
 
   tag:

@@ -67,7 +67,7 @@ GitHub Actions workflows check and publish the site. The FTP uploads send only w
 | ------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ci.yml`     | push to `main`, pull requests, called by `beta.yml`             | Checks formatting, runs lint, type-check, tests and the build. It never deploys.                                                                                                                                   |
 | `deploy.yml` | a release is published, called by `beta.yml`, or manual (a tag) | Runs lint, type-check and tests on the tag and builds it for its channel. Production: uploads the changed files over FTP, never touching `charts/`. Beta: publishes to GitHub Pages with a snapshot of the charts. |
-| `beta.yml`   | push to `develop` (not for `*.md` only)                         | Runs the `ci.yml` checks, tags the commit with the next `vX.Y.Z-beta.N` and deploys it with `deploy.yml`.                                                                                                          |
+| `beta.yml`   | push to `develop` (not for `*.md` only), or manual on `develop` | Runs the `ci.yml` checks, tags the commit with the next `vX.Y.Z-beta.N` and deploys it with `deploy.yml`.                                                                                                          |
 | `charts.yml` | every day at 05:17 UTC, or manual                               | Downloads the charts, then uploads only `public/charts/` to `charts/` on the FTP server. No build.                                                                                                                 |
 
 ### Releasing
@@ -76,7 +76,7 @@ GitHub Actions workflows check and publish the site. The FTP uploads send only w
 
 - `X.Y.Z` is the minor after the latest production release (`v1.0.0` → `1.1.0`), or `1.0.0` before the first one. For another version, e.g. a major, set the repository variable `NEXT_VERSION` (e.g. `2.0.0`): it is used while it is higher than the computed one.
 - `N` counts up from 1 for each `X.Y.Z`. A failed check creates no tag, and a retried run reuses the commit's tag.
-- Pushes that only change Markdown files publish nothing.
+- Pushes that only change Markdown files publish nothing, and neither does a push that changes no file (e.g. creating the branch). To publish a beta without a new commit, run **Actions → beta → Run workflow** on `develop`.
 
 **Production (manual).**
 
