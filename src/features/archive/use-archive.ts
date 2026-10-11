@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import i18n from '../../i18n';
 import type { SimplifiedEpisode } from '../../lib/spotify/types';
 import { toast } from '../../lib/storage/toasts';
-import { removeFromQueue } from '../queue/queue';
+import { removeFromQueue, removeManyFromQueue } from '../queue/queue';
 import {
   archiveStatus,
   isArchivedIn,
@@ -43,6 +43,26 @@ export function archiveEpisode(episode: SimplifiedEpisode) {
     action: {
       label: i18n.t('archive.undo'),
       run: () => useArchiveStore.getState().restore(episode),
+    },
+  });
+}
+
+/** Archives several episodes at once, with a single undo. */
+export function archiveEpisodes(episodes: SimplifiedEpisode[]) {
+  if (episodes.length === 0) return;
+  const store = useArchiveStore.getState();
+  for (const episode of episodes) store.archive(episode);
+  void removeManyFromQueue(
+    episodes.map((ep) => ep.uri),
+    { silent: true },
+  ).catch(() => undefined);
+  toast(i18n.t('archive.archivedMany', { count: episodes.length }), {
+    action: {
+      label: i18n.t('archive.undo'),
+      run: () => {
+        for (const episode of episodes)
+          useArchiveStore.getState().restore(episode);
+      },
     },
   });
 }

@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryClient } from '../../lib/query/query-client';
 import { usePlayer } from '../player/player-store';
+import { useSelection } from '../selection/selection-store';
 import * as queue from './queue';
 
 import QueuePage from './queue-page';
@@ -30,6 +31,7 @@ describe('QueuePage', () => {
     vi.restoreAllMocks();
     queryClient.clear();
     usePlayer.setState({ nowPlaying: null });
+    useSelection.getState().clear();
   });
 
   it('shows the queue with its total time and the playing head', () => {
@@ -76,6 +78,28 @@ describe('QueuePage', () => {
       }),
     );
     expect(clear).toHaveBeenCalled();
+  });
+
+  it('selects episodes from the menu', async () => {
+    queryClient.setQueryData(queue.queueKey, {
+      episodes: [ep('a', 30), ep('b', 45)],
+      otherCount: 0,
+    });
+    renderQueue();
+    await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Select' }));
+    await userEvent.click(
+      screen.getByRole('checkbox', { name: 'Select Episode b' }),
+    );
+    expect(useSelection.getState()).toMatchObject({
+      scope: 'queue',
+      kind: 'queue',
+      selected: ['spotify:episode:b'],
+    });
+    // Reordering is off while selecting.
+    expect(
+      screen.queryByRole('button', { name: /Drag to reorder/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows the empty state', () => {

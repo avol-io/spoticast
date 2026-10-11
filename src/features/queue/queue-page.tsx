@@ -17,13 +17,14 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   ExternalLink,
   GripVertical,
+  ListChecks,
   ListMusic,
   ListX,
   MoreVertical,
   RefreshCw,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../../app/ui/empty-state';
 import IconButton from '../../app/ui/icon-button';
@@ -36,6 +37,8 @@ import { PlayButton } from '../player/episode-actions';
 import { switchToSpotify } from '../player/player-controller';
 import { usePlayer } from '../player/player-store';
 import EpisodeRow from '../podcast/episode-row';
+import EpisodeSwipeRow from '../podcast/episode-swipe-row';
+import { useSelectableList } from '../selection/selection-store';
 import { clearQueue, moveInQueue, removeFromQueue, useQueue } from './queue';
 import { useQueueStore } from './queue-store';
 import SyncDialog from './sync-dialog';
@@ -44,9 +47,13 @@ import { useErrorText } from '../../lib/spotify/errors';
 function QueueItem({
   episode,
   playing,
+  selecting,
+  onStartSelection,
 }: {
   episode: Episode;
   playing: boolean;
+  selecting: boolean;
+  onStartSelection: () => void;
 }) {
   const { t } = useTranslation();
   const {
@@ -67,6 +74,7 @@ function QueueItem({
     >
       <button
         type="button"
+        hidden={selecting}
         ref={setActivatorNodeRef}
         aria-label={`${t('queue.reorder')}: ${episode.name}`}
         className="flex h-12 w-8 shrink-0 cursor-grab touch-none items-center justify-center text-fg-subtle hover:text-fg active:cursor-grabbing"
@@ -76,24 +84,31 @@ function QueueItem({
         <GripVertical className="size-5" aria-hidden />
       </button>
       <div className="min-w-0 flex-1">
-        <EpisodeRow
+        <EpisodeSwipeRow
           episode={episode}
-          showCover
-          eyebrow={playing ? t('queue.nowPlaying') : episode.show?.name}
-          actions={
-            <>
-              <IconButton
-                label={`${t('queue.remove')}: ${episode.name}`}
-                onClick={() =>
-                  void removeFromQueue(episode.uri).catch(() => undefined)
-                }
-              >
-                <X />
-              </IconButton>
-              <PlayButton episode={episode} />
-            </>
-          }
-        />
+          inQueue
+          selecting={selecting}
+          onStartSelection={onStartSelection}
+        >
+          <EpisodeRow
+            episode={episode}
+            showCover
+            eyebrow={playing ? t('queue.nowPlaying') : episode.show?.name}
+            actions={
+              <>
+                <IconButton
+                  label={`${t('queue.remove')}: ${episode.name}`}
+                  onClick={() =>
+                    void removeFromQueue(episode.uri).catch(() => undefined)
+                  }
+                >
+                  <X />
+                </IconButton>
+                <PlayButton episode={episode} />
+              </>
+            }
+          />
+        </EpisodeSwipeRow>
       </div>
     </li>
   );
@@ -150,7 +165,8 @@ export function QueuePage() {
     }),
   );
 
-  const episodes = queue.data?.episodes ?? [];
+  const episodes = useMemo(() => queue.data?.episodes ?? [], [queue.data]);
+  const selection = useSelectableList('queue', 'queue', episodes);
   const uris = episodes.map((ep) => ep.uri);
   const remainingMs = episodes.reduce(
     (sum, ep) => sum + episodeProgress(ep).remainingMs,
@@ -181,6 +197,11 @@ export function QueuePage() {
               },
               ...(episodes.length > 0
                 ? [
+                    {
+                      label: t('selection.select'),
+                      icon: <ListChecks />,
+                      onSelect: () => selection.start(),
+                    },
                     {
                       label: t('queue.clearQueue'),
                       icon: <ListX />,
@@ -251,6 +272,8 @@ export function QueuePage() {
                         key={episode.uri}
                         episode={episode}
                         playing={index === 0 && episode.uri === nowPlayingUri}
+                        selecting={selection.selecting}
+                        onStartSelection={() => selection.start(episode.uri)}
                       />
                     ))}
                   </ul>

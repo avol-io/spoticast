@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ExternalLink,
+  ListChecks,
   MoreVertical,
   Pencil,
   Play,
@@ -20,6 +21,8 @@ import { toast } from '../../lib/storage/toasts';
 import EpisodeActions from '../player/episode-actions';
 import { playAll } from '../player/player-controller';
 import EpisodeRow from '../podcast/episode-row';
+import EpisodeSwipeRow from '../podcast/episode-swipe-row';
+import { useSelectableList } from '../selection/selection-store';
 import FilterSummary from './filter-summary';
 import SmartListEditor from './smart-list-editor';
 import { dropSmartPlaylist, useSmartListEpisodes } from './smart-lists';
@@ -32,6 +35,11 @@ export function SmartListPage() {
   const deleteSmartList = useFilters((s) => s.deleteSmartList);
   const { episodes, loading } = useSmartListEpisodes(list);
   const [editing, setEditing] = useState<SmartList | null>(null);
+  const selection = useSelectableList(
+    `smart:${filterId}`,
+    'episodes',
+    episodes,
+  );
 
   if (!list) {
     return (
@@ -75,6 +83,15 @@ export function SmartListPage() {
                   icon: <Pencil />,
                   onSelect: () => setEditing(list),
                 },
+                ...(episodes.length > 0
+                  ? [
+                      {
+                        label: t('selection.select'),
+                        icon: <ListChecks />,
+                        onSelect: () => selection.start(),
+                      },
+                    ]
+                  : []),
                 ...(list.playlistId
                   ? [
                       {
@@ -125,18 +142,24 @@ export function SmartListPage() {
             <ul className="divide-y divide-border">
               {episodes.map((episode) => (
                 <li key={episode.id}>
-                  <EpisodeRow
+                  <EpisodeSwipeRow
                     episode={episode}
-                    showCover
-                    eyebrow={episode.show.name}
-                    video={isVideoShow(episode.show)}
-                    actions={
-                      <EpisodeActions
-                        episode={episode}
-                        video={isVideoShow(episode.show)}
-                      />
-                    }
-                  />
+                    selecting={selection.selecting}
+                    onStartSelection={() => selection.start(episode.uri)}
+                  >
+                    <EpisodeRow
+                      episode={episode}
+                      showCover
+                      eyebrow={episode.show.name}
+                      video={isVideoShow(episode.show)}
+                      actions={
+                        <EpisodeActions
+                          episode={episode}
+                          video={isVideoShow(episode.show)}
+                        />
+                      }
+                    />
+                  </EpisodeSwipeRow>
                 </li>
               ))}
             </ul>

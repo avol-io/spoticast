@@ -5,6 +5,8 @@ import SmartPlaylistsRuntime from '../../features/filters/smart-playlists-runtim
 import MiniPlayer from '../../features/player/mini-player';
 import PlayerRuntime from '../../features/player/player-runtime';
 import { usePlayer } from '../../features/player/player-store';
+import SelectionBar from '../../features/selection/selection-bar';
+import { useSelection } from '../../features/selection/selection-store';
 import Toaster from '../ui/toaster';
 import BottomNav from './bottom-nav';
 import NavigationProgress from './navigation-progress';
@@ -23,6 +25,7 @@ export function AppShell() {
   const { t } = useTranslation();
   const fullPlayerOpen = usePlayer((s) => s.fullPlayerOpen);
   const videoOpen = usePlayer((s) => s.video !== null);
+  const selecting = useSelection((s) => s.scope !== null);
   return (
     <div className="min-h-dvh lg:pl-60">
       <a
@@ -39,16 +42,24 @@ export function AppShell() {
       <main
         id="main"
         tabIndex={-1}
-        className="pb-[calc(9rem+env(safe-area-inset-bottom))] outline-none lg:pb-28"
+        className={`outline-none ${
+          selecting
+            ? 'pb-[calc(12rem+env(safe-area-inset-bottom))] lg:pb-48'
+            : 'pb-[calc(9rem+env(safe-area-inset-bottom))] lg:pb-28'
+        }`}
       >
         <Outlet />
       </main>
       <div className="fixed inset-x-0 bottom-0 z-30 lg:left-60">
         <Toaster />
         <MiniPlayer />
-        <div className="lg:hidden">
-          <BottomNav />
-        </div>
+        {selecting ? (
+          <SelectionBar />
+        ) : (
+          <div className="lg:hidden">
+            <BottomNav />
+          </div>
+        )}
       </div>
       <Suspense fallback={null}>
         {fullPlayerOpen && <FullPlayer />}

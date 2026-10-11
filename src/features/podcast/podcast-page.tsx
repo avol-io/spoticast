@@ -1,4 +1,9 @@
-import { Archive, Headphones, SlidersHorizontal } from 'lucide-react';
+import {
+  Archive,
+  Headphones,
+  ListChecks,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -17,7 +22,10 @@ import {
 import { useFilters } from '../../lib/storage/filters';
 import EpisodeActions from '../player/episode-actions';
 import { flattenEpisodes, useShow, useShowEpisodes } from '../library/queries';
+import type { Episode } from '../../lib/spotify/types';
+import { useSelectableList } from '../selection/selection-store';
 import EpisodeRow from './episode-row';
+import EpisodeSwipeRow from './episode-swipe-row';
 import PodcastHero from './podcast-hero';
 import { useErrorText } from '../../lib/spotify/errors';
 
@@ -66,6 +74,10 @@ export function PodcastPage() {
   const archived = all.filter(isArchived);
   const unplayed = all.filter((ep) => !isArchived(ep));
   const visible = tab === 'archived' ? archived : unplayed;
+  const listed: Episode[] = show.data
+    ? visible.map((ep) => ({ ...ep, show: show.data }))
+    : [];
+  const selection = useSelectableList(`podcast:${showId}`, 'episodes', listed);
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = episodesQuery;
   const sentinel = useAutoLoad(
     !!hasNextPage && !isFetchingNextPage,
@@ -132,6 +144,13 @@ export function PodcastPage() {
                 ))}
               </div>
               <IconButton
+                label={t('selection.select')}
+                disabled={listed.length === 0}
+                onClick={() => selection.start()}
+              >
+                <ListChecks />
+              </IconButton>
+              <IconButton
                 label={t('filters.filter')}
                 aria-pressed={filtered}
                 onClick={() => setFilterOpen(true)}
@@ -186,22 +205,37 @@ export function PodcastPage() {
               )
             ) : (
               <ul className="divide-y divide-border">
-                {visible.map((episode) => (
-                  <li key={episode.id}>
+                {visible.map((episode, i) => {
+                  const row = (
                     <EpisodeRow
                       episode={episode}
                       video={isVideoShow(show.data)}
                       actions={
                         show.data && (
                           <EpisodeActions
-                            episode={{ ...episode, show: show.data }}
+                            episode={listed[i]}
                             video={isVideoShow(show.data)}
                           />
                         )
                       }
                     />
-                  </li>
-                ))}
+                  );
+                  return (
+                    <li key={episode.id}>
+                      {listed[i] ? (
+                        <EpisodeSwipeRow
+                          episode={listed[i]}
+                          selecting={selection.selecting}
+                          onStartSelection={() => selection.start(episode.uri)}
+                        >
+                          {row}
+                        </EpisodeSwipeRow>
+                      ) : (
+                        row
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
 
