@@ -30,10 +30,10 @@ function renderPage() {
   });
   const router = createMemoryRouter(
     [
-      { path: '/filters', element: <FiltersPage /> },
-      { path: '/filters/:id', element: <p>detail</p> },
+      { path: '/playlists', element: <FiltersPage /> },
+      { path: '/playlists/:id', element: <p>detail</p> },
     ],
-    { initialEntries: ['/filters'] },
+    { initialEntries: ['/playlists'] },
   );
   render(
     <QueryClientProvider client={qc}>
@@ -45,16 +45,16 @@ function renderPage() {
 describe('FiltersPage', () => {
   beforeEach(() => useFilters.setState({ smartLists: [] }));
 
-  it('invites to create the first smart filter', async () => {
+  it('invites to create the first smart playlist', async () => {
     renderPage();
-    expect(screen.getByText('No smart filters yet')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'New filter' }));
+    expect(screen.getByText('No smart playlists yet')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'New playlist' }));
     expect(
-      screen.getByRole('dialog', { name: 'New filter' }),
+      screen.getByRole('dialog', { name: 'New playlist' }),
     ).toBeInTheDocument();
   });
 
-  it('lists smart filters with their summary and episode count', () => {
+  it('lists smart playlists with their summary and episode count', () => {
     useFilters.setState({
       smartLists: [
         {
@@ -74,7 +74,7 @@ describe('FiltersPage', () => {
     });
     renderPage();
     const link = screen.getByRole('link', { name: /Short/ });
-    expect(link).toHaveAttribute('href', '/filters/l1');
+    expect(link).toHaveAttribute('href', '/playlists/l1');
     expect(link).toHaveTextContent('≤ 20 min');
     expect(link).toHaveTextContent('1 episode');
     expect(link).toHaveTextContent('SPOTIFY');

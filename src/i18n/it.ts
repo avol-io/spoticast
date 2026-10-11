@@ -9,7 +9,7 @@ export const it: Dictionary = {
   },
   nav: {
     podcasts: 'Podcast',
-    filters: 'Filtri',
+    playlists: 'Playlist',
     queue: 'In coda',
     search: 'Cerca',
     settings: 'Impostazioni',
@@ -258,14 +258,14 @@ export const it: Dictionary = {
     summaryVideo: 'video',
   },
   smart: {
-    title: 'Filtri smart',
+    title: 'Playlist smart',
     intro:
-      'Liste di episodi presi da tutti i tuoi podcast, come in Pocket Casts.',
-    new: 'Nuovo filtro',
-    edit: 'Modifica filtro',
-    delete: 'Elimina filtro',
-    deleted: 'Filtro “{{name}}” eliminato',
-    empty: 'Nessun filtro smart',
+      'Episodi presi da tutti i tuoi podcast in base a delle regole, come in Pocket Casts.',
+    new: 'Nuova playlist',
+    edit: 'Modifica playlist',
+    delete: 'Elimina playlist',
+    deleted: 'Playlist “{{name}}” eliminata',
+    empty: 'Nessuna playlist smart',
     emptyHint:
       "Per esempio: meno di 30 minuti, dell'ultima settimana, non iniziati.",
     name: 'Nome',
@@ -279,23 +279,23 @@ export const it: Dictionary = {
     sortOldest: 'Meno recenti',
     sortShortest: 'Più brevi',
     sortLongest: 'Più lunghi',
-    spotifyPlaylist: 'Crea playlist su Spotify',
+    spotifyPlaylist: 'Sincronizza su Spotify',
     spotifyPlaylistHint:
-      "“Spoticast - {{name}}” viene svuotata e ricreata con gli episodi del filtro a ogni avvio dell'app.",
+      "“Spoticast - {{name}}” viene svuotata e ricreata con gli episodi della playlist a ogni avvio dell'app.",
     save: 'Salva',
     cancel: 'Annulla',
     episodes_one: '{{count}} episodio',
     episodes_other: '{{count}} episodi',
     scopeHint: 'Considera gli ultimi 50 episodi di ogni podcast.',
     playlistSynced: 'Playlist “{{name}}” aggiornata',
-    notFound: 'Questo filtro non esiste più.',
+    notFound: 'Questa playlist non esiste più.',
     playAll: 'Riproduci tutti',
     removedElsewhere:
-      'Il filtro “{{name}}” è stato eliminato su un altro dispositivo',
+      'La playlist “{{name}}” è stata eliminata su un altro dispositivo',
     syncHint:
-      'Il filtro si sincronizza con gli altri tuoi dispositivi tramite questa playlist; spegnendola resta solo su questo.',
+      'La playlist si sincronizza con gli altri tuoi dispositivi tramite Spotify; disattivandola resta solo su questo.',
     syncTooLong:
-      'Troppi podcast o testo troppo lungo per sincronizzarlo: la playlist funziona, ma il filtro resta solo su questo dispositivo.',
+      'Troppi podcast o testo troppo lungo per sincronizzarla: la playlist su Spotify funziona, ma le regole restano solo su questo dispositivo.',
   },
   search: {
     placeholder: 'Cerca podcast ed episodi',

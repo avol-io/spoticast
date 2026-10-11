@@ -27,7 +27,11 @@ function renderEditor(
 }
 
 describe('SmartListEditor', () => {
-  beforeEach(() => useFilters.setState({ smartLists: [] }));
+  let sync: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    useFilters.setState({ smartLists: [] });
+    sync = vi.spyOn(smartLists, 'syncSmartPlaylist').mockResolvedValue();
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it('saves a list limited to chosen podcasts', async () => {
@@ -52,17 +56,26 @@ describe('SmartListEditor', () => {
     expect(onSaved).toHaveBeenCalled();
   });
 
-  it('builds the Spotify playlist when asked', async () => {
-    const sync = vi.spyOn(smartLists, 'syncSmartPlaylist').mockResolvedValue();
+  it('syncs to Spotify by default', async () => {
     renderEditor();
     await userEvent.type(screen.getByLabelText('Name'), 'Morning');
-    await userEvent.click(
-      screen.getByRole('switch', { name: /Create a playlist on Spotify/ }),
-    );
+    expect(
+      screen.getByRole('switch', { name: /Sync to Spotify/ }),
+    ).toBeChecked();
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(sync).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Morning', spotifyPlaylist: true }),
     );
+  });
+
+  it('keeps the playlist on this device when sync is off', async () => {
+    renderEditor();
+    await userEvent.type(screen.getByLabelText('Name'), 'Local');
+    await userEvent.click(
+      screen.getByRole('switch', { name: /Sync to Spotify/ }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(sync).not.toHaveBeenCalled();
   });
 
   it('stamps the edit time so other devices can tell which copy is newer', async () => {
@@ -84,8 +97,6 @@ describe('SmartListEditor', () => {
       spotifyPlaylist: true,
       criteria: { ...base.criteria, text: 'x'.repeat(250) },
     });
-    expect(screen.getByRole('status')).toHaveTextContent(
-      /stays on this device/,
-    );
+    expect(screen.getByRole('status')).toHaveTextContent(/stay on this device/);
   });
 });

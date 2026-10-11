@@ -15,7 +15,7 @@ function SmartListCard({ list }: { list: SmartList }) {
   const summary = criteriaSummary(list.criteria, t).join(' · ');
   return (
     <Link
-      to={`/filters/${list.id}`}
+      to={`/playlists/${list.id}`}
       className="flex items-center gap-4 rounded-2xl bg-surface px-4 py-3.5 transition-colors hover:bg-surface-2"
     >
       <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand">
@@ -94,7 +94,7 @@ export function FiltersPage() {
       <SmartListEditor
         list={editing}
         onClose={() => setEditing(null)}
-        onSaved={(list) => navigate(`/filters/${list.id}`)}
+        onSaved={(list) => navigate(`/playlists/${list.id}`)}
       />
     </>
   );

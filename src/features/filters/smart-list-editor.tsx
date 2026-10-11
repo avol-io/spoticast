@@ -23,7 +23,7 @@ export function newSmartList(): SmartList {
     showIds: null,
     includeArchived: false,
     sort: 'newest',
-    spotifyPlaylist: false,
+    spotifyPlaylist: true,
     playlistId: null,
     playlistName: null,
     playlistDescription: null,
@@ -40,7 +40,7 @@ export interface SmartListEditorProps {
 const inputClass =
   'w-full rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm focus:border-brand focus:outline-none';
 
-/** Creates or edits a smart filter; `list` null keeps the sheet closed. */
+/** Creates or edits a smart playlist; `list` null keeps the sheet closed. */
 export function SmartListEditor({
   list,
   onClose,

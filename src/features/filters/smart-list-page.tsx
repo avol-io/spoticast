@@ -36,7 +36,7 @@ export function SmartListPage() {
       <EmptyState
         title={t('smart.notFound')}
         action={
-          <Link to="/filters" className="font-semibold text-brand">
+          <Link to="/playlists" className="font-semibold text-brand">
             {t('smart.title')}
           </Link>
         }
@@ -48,7 +48,7 @@ export function SmartListPage() {
     deleteSmartList(list.id);
     void dropSmartPlaylist(list);
     toast(t('smart.deleted', { name: list.name }));
-    navigate('/filters', { replace: true });
+    navigate('/playlists', { replace: true });
   };
 
   return (
@@ -59,7 +59,7 @@ export function SmartListPage() {
           <>
             <IconButton
               label={t('podcast.back')}
-              onClick={() => navigate('/filters')}
+              onClick={() => navigate('/playlists')}
               className="lg:hidden"
             >
               <ArrowLeft />

@@ -7,7 +7,7 @@ export const en = {
   },
   nav: {
     podcasts: 'Podcasts',
-    filters: 'Filters',
+    playlists: 'Playlists',
     queue: 'Up Next',
     search: 'Search',
     settings: 'Settings',
@@ -252,13 +252,14 @@ export const en = {
     summaryVideo: 'video',
   },
   smart: {
-    title: 'Smart filters',
-    intro: 'Lists of episodes across your podcasts, Pocket Casts style.',
-    new: 'New filter',
-    edit: 'Edit filter',
-    delete: 'Delete filter',
-    deleted: 'Filter “{{name}}” deleted',
-    empty: 'No smart filters yet',
+    title: 'Smart playlists',
+    intro:
+      'Episodes from across your podcasts, picked by rules, Pocket Casts style.',
+    new: 'New playlist',
+    edit: 'Edit playlist',
+    delete: 'Delete playlist',
+    deleted: 'Playlist “{{name}}” deleted',
+    empty: 'No smart playlists yet',
     emptyHint:
       'For example: under 30 minutes, from the last week, not started.',
     name: 'Name',
@@ -272,7 +273,7 @@ export const en = {
     sortOldest: 'Oldest first',
     sortShortest: 'Shortest first',
     sortLongest: 'Longest first',
-    spotifyPlaylist: 'Create a playlist on Spotify',
+    spotifyPlaylist: 'Sync to Spotify',
     spotifyPlaylistHint:
       '“Spoticast - {{name}}” is emptied and rebuilt with the matching episodes every time the app starts.',
     save: 'Save',
@@ -281,13 +282,13 @@ export const en = {
     episodes_other: '{{count}} episodes',
     scopeHint: 'Looks at the latest 50 episodes of each podcast.',
     playlistSynced: 'Playlist “{{name}}” updated',
-    notFound: 'This filter no longer exists.',
+    notFound: 'This playlist no longer exists.',
     playAll: 'Play all',
-    removedElsewhere: 'Filter “{{name}}” was removed on another device',
+    removedElsewhere: 'Playlist “{{name}}” was removed on another device',
     syncHint:
-      'The filter syncs with your other devices through this playlist; turning it off keeps it only on this one.',
+      'The playlist syncs with your other devices through Spotify; turning this off keeps it only on this one.',
     syncTooLong:
-      'Too many podcasts or too much text to sync: the playlist still works, but this filter stays on this device.',
+      'Too many podcasts or too much text to sync: the Spotify playlist still works, but its rules stay on this device.',
   },
   search: {
     placeholder: 'Search podcasts and episodes',

@@ -1,9 +1,9 @@
 import {
   LayoutGrid,
+  ListFilter,
   ListMusic,
   Search,
   Settings,
-  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -12,7 +12,7 @@ export interface NavItem {
   icon: LucideIcon;
   labelKey:
     | 'nav.podcasts'
-    | 'nav.filters'
+    | 'nav.playlists'
     | 'nav.queue'
     | 'nav.search'
     | 'nav.settings';
@@ -22,7 +22,7 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { to: '/', icon: LayoutGrid, labelKey: 'nav.podcasts', end: true },
-  { to: '/filters', icon: SlidersHorizontal, labelKey: 'nav.filters' },
+  { to: '/playlists', icon: ListFilter, labelKey: 'nav.playlists' },
   { to: '/queue', icon: ListMusic, labelKey: 'nav.queue' },
   { to: '/search', icon: Search, labelKey: 'nav.search' },
   { to: '/settings', icon: Settings, labelKey: 'nav.settings' },

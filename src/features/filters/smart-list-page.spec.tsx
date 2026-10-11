@@ -43,10 +43,10 @@ function renderPage() {
   });
   const router = createMemoryRouter(
     [
-      { path: '/filters/:filterId', element: <SmartListPage /> },
-      { path: '/filters', element: <p>all filters</p> },
+      { path: '/playlists/:filterId', element: <SmartListPage /> },
+      { path: '/playlists', element: <p>all playlists</p> },
     ],
-    { initialEntries: ['/filters/l1'] },
+    { initialEntries: ['/playlists/l1'] },
   );
   render(
     <QueryClientProvider client={queryClient}>
@@ -92,17 +92,17 @@ describe('SmartListPage', () => {
     expect(screen.getByText(/2 episodes/)).toBeInTheDocument();
   });
 
-  it('deletes the filter and its playlist', async () => {
+  it('deletes the smart playlist and its Spotify copy', async () => {
     const drop = vi.spyOn(smartLists, 'dropSmartPlaylist').mockResolvedValue();
     renderPage();
     await userEvent.click(
       screen.getAllByRole('button', { name: 'More actions' })[0],
     );
     await userEvent.click(
-      screen.getByRole('menuitem', { name: 'Delete filter' }),
+      screen.getByRole('menuitem', { name: 'Delete playlist' }),
     );
     expect(useFilters.getState().smartLists).toEqual([]);
     expect(drop).toHaveBeenCalled();
-    expect(await screen.findByText('all filters')).toBeInTheDocument();
+    expect(await screen.findByText('all playlists')).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import {
   createBrowserRouter,
   Navigate,
+  useParams,
   type LazyRouteFunction,
   type RouteObject,
 } from 'react-router-dom';
@@ -17,6 +18,11 @@ const page =
     load: () => Promise<{ default: ComponentType }>,
   ): LazyRouteFunction<RouteObject> =>
   async () => ({ Component: (await load()).default });
+
+export function LegacyPlaylistRedirect() {
+  const { filterId } = useParams();
+  return <Navigate to={`/playlists/${filterId}`} replace />;
+}
 
 function PageFallback() {
   return <div className="min-h-dvh" aria-busy="true" />;
@@ -44,13 +50,16 @@ export const routes: RouteObject[] = [
         lazy: page(() => import('../features/podcast/podcast-page')),
       },
       {
-        path: 'filters',
+        path: 'playlists',
         lazy: page(() => import('../features/filters/filters-page')),
       },
       {
-        path: 'filters/:filterId',
+        path: 'playlists/:filterId',
         lazy: page(() => import('../features/filters/smart-list-page')),
       },
+      // Smart playlists were called smart filters.
+      { path: 'filters', element: <Navigate to="/playlists" replace /> },
+      { path: 'filters/:filterId', element: <LegacyPlaylistRedirect /> },
       {
         path: 'queue',
         lazy: page(() => import('../features/queue/queue-page')),

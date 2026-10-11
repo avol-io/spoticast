@@ -51,7 +51,7 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
 - Channels and versions:
   - `VITE_CHANNEL=beta` builds the beta: "Spoticast Beta" manifest and title, `noindex`, icons from `public/icons-beta/` (regenerate with `npx pwa-assets-generator --config pwa-assets-beta.config.ts`), a Beta badge and "Spoticast Beta" as the Connect device name. Read the channel from `src/lib/build-info.ts` (`IS_BETA`, `APP_BUILD`, `LOGO_URL`), never from `__APP_BUILD__` directly.
   - The build writes `version.json` (version, sha, date, channel, release URL). When a new service worker is waiting, `src/lib/pwa/update.ts` reads it to name the new version.
-  - The beta is a separate origin (GitHub Pages), so its local data is separate, but it shares the Spotify Up Next and smart filter playlists with production.
+  - The beta is a separate origin (GitHub Pages), so its local data is separate, but it shares the Spotify Up Next and smart playlists with production.
 - Playback and Up Next:
   - Up Next is the user's private Spotify playlist "Spoticast". It is found or created by `ensureQueuePlaylist()` and edited only through the serialized helpers in `src/features/queue/queue.ts`, which update the cache optimistically and roll back on errors.
   - Episodes are played as that playlist's context, so the queue keeps going after the current episode. Issue playback commands only through `src/features/player/player-controller.ts`, which covers both the Web Playback SDK (this browser) and Spotify Connect (other devices).
@@ -60,7 +60,7 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
   - Local player vs external device: every playback feature has two behaviors, one for this browser (Web Playback SDK, `nowPlaying.isLocal`) and one for another Spotify Connect device (Web API only, and the app may be closed while it plays). Branch with `onTarget()` in `player-controller.ts`, cover both cases in tests, and when a request touches playback, state how each case behaves (ask if unclear).
 - Archive and filters:
   - "Archived" = `fully_played` on Spotify, or archived locally and waiting for the silent-completion sync (`src/features/archive/`). Use `useIsArchived()` rather than reading `resume_point` directly.
-  - Per-podcast filters and smart lists share the pure matcher in `src/lib/filters/engine.ts`.
+  - Per-podcast filters and smart playlists (called smart lists in the code, under `/playlists`) share the pure matcher in `src/lib/filters/engine.ts`.
 - PWA icons are generated from `public/logo.svg` with `npx pwa-assets-generator` (`pwa-assets.config.ts`).
 - Tailwind v4 is loaded through the `@tailwindcss/vite` plugin and `@import 'tailwindcss'` in `src/styles.css`. There is no `tailwind.config.*` file; Tailwind v4 is configured in CSS. CSS modules (`*.module.css`) are also supported.
 - New React code should come from the Nx generators (`npx nx g @nx/react:component`, `@nx/react:lib`). Styling is Tailwind, so pass `--style=none` (e.g. `npx nx g @nx/react:component src/features/home/show-card --style=none --no-interactive`). Generated files are kebab-case with a colocated `.spec.tsx`.
