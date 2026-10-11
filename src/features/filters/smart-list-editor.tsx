@@ -23,9 +23,8 @@ export function newSmartList(): SmartList {
   return {
     id: newSmartListId(),
     name: '',
-    criteria: { ...emptyCriteria, status: 'not-started' },
+    criteria: { ...emptyCriteria, statuses: ['not-started'] },
     showIds: null,
-    includeArchived: false,
     sort: 'newest',
     spotifyPlaylist: true,
     playlistId: null,
@@ -183,6 +182,7 @@ export function SmartListEditor({
           value={draft.criteria}
           onChange={(criteria) => set({ criteria })}
           showVideoOption
+          showArchivedOption
         />
 
         <div className="flex flex-col gap-2">
@@ -205,11 +205,6 @@ export function SmartListEditor({
           </select>
         </div>
 
-        <Switch
-          label={t('smart.includeArchived')}
-          checked={draft.includeArchived}
-          onChange={(includeArchived) => set({ includeArchived })}
-        />
         <div className="flex flex-col gap-2">
           <Switch
             label={t('smart.spotifyPlaylist')}

@@ -11,7 +11,7 @@ function EditorDemo() {
     ...emptyCriteria,
     maxMinutes: 30,
     withinDays: 7,
-    status: 'not-started',
+    statuses: ['not-started'],
   });
   return (
     <div className="max-w-lg">

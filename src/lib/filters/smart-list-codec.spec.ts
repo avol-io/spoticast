@@ -1,5 +1,5 @@
 import type { SmartList } from '../storage/filters';
-import { emptyCriteria } from './engine';
+import { emptyCriteria, type FilterCriteria } from './engine';
 import {
   decodeDescription,
   describeSmartList,
@@ -11,20 +11,16 @@ import {
 
 const showId = (n: number) => `${String(n).padStart(5, '0')}abcdefghijklmnopq`;
 
-const list: Pick<
-  SmartList,
-  'criteria' | 'showIds' | 'includeArchived' | 'sort' | 'updatedAt'
-> = {
+const list: Pick<SmartList, 'criteria' | 'showIds' | 'sort' | 'updatedAt'> = {
   criteria: {
     ...emptyCriteria,
     maxMinutes: 30,
     withinDays: 7,
-    status: 'not-started',
+    statuses: ['not-started', 'archived'],
     text: 'caffè "news"',
     videoOnly: true,
   },
   showIds: [showId(1), showId(2)],
-  includeArchived: true,
   sort: 'shortest',
   updatedAt: 1_760_000_000_000,
 };
@@ -32,18 +28,46 @@ const list: Pick<
 describe('smart list codec', () => {
   it('round-trips a config through the description', () => {
     const description = encodeSmartList(list);
-    expect(description).toMatch(/^Spoticast smart filter · sc1:[\w-]+$/);
+    expect(description).toMatch(/^Spoticast smart playlist · sc1:[\w-]+$/);
     expect(decodeDescription(description)).toEqual({
       kind: 'valid',
       updatedAt: list.updatedAt,
       config: {
         criteria: list.criteria,
         showIds: ['00001', '00002'],
-        includeArchived: true,
         sort: 'shortest',
       },
     });
   });
+
+  it.each<[FilterCriteria['statuses'], string, 0 | 1]>([
+    [[], 'a', 1],
+    [['not-started', 'in-progress'], 'a', 0],
+    [['not-started'], 'n', 0],
+    [['in-progress', 'archived'], 'p', 1],
+    [['archived'], 'x', 1],
+  ])(
+    'writes statuses %j as the v1 status %s and archived flag %i',
+    (statuses, status, archived) => {
+      const description = encodeSmartList({
+        ...list,
+        criteria: { ...list.criteria, statuses },
+      });
+      const payload = JSON.parse(
+        atob(
+          (description ?? '')
+            .split('sc1:')[1]
+            .replace(/-/g, '+')
+            .replace(/_/g, '/'),
+        ),
+      );
+      expect([payload[5], payload[8]]).toEqual([status, archived]);
+      const decoded = decodeDescription(description);
+      expect(
+        decoded.kind === 'valid' && decoded.config.criteria.statuses,
+      ).toEqual(statuses);
+    },
+  );
 
   it('keeps "every podcast" apart from an explicit choice', () => {
     const decoded = decodeDescription(
@@ -69,7 +93,7 @@ describe('smart list codec', () => {
     const future = btoa(JSON.stringify([2, 'a'])).replace(/=+$/, '');
     expect(decodeDescription(`sc1:${future}`).kind).toBe('invalid');
     const badStatus = btoa(
-      JSON.stringify([1, 'a', null, null, null, 'x', '', 0, 0, 'n', null]),
+      JSON.stringify([1, 'a', null, null, null, 'z', '', 0, 0, 'n', null]),
     ).replace(/=+$/, '');
     expect(decodeDescription(`sc1:${badStatus}`).kind).toBe('invalid');
   });

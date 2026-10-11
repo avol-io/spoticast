@@ -50,7 +50,7 @@ describe('SmartListEditor', () => {
       showIds: ['s1'],
       criteria: expect.objectContaining({
         maxMinutes: 30,
-        status: 'not-started',
+        statuses: ['not-started'],
       }),
     });
     expect(onSaved).toHaveBeenCalled();

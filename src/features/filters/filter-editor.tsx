@@ -1,8 +1,12 @@
 import { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import SegmentedControl from '../../app/ui/segmented-control';
 import Switch from '../../app/ui/switch';
-import type { FilterCriteria, ListeningStatus } from '../../lib/filters/engine';
+import {
+  LISTENING_STATUSES,
+  type FilterCriteria,
+  type ListeningStatus,
+} from '../../lib/filters/engine';
+import { statusLabels } from './filter-summary';
 
 const MIN_OPTIONS = [5, 10, 15, 20, 30, 45, 60];
 const MAX_OPTIONS = [10, 15, 20, 30, 45, 60, 90, 120];
@@ -13,6 +17,8 @@ export interface FilterEditorProps {
   onChange: (value: FilterCriteria) => void;
   /** Spotify flags video per show, so this only makes sense across shows. */
   showVideoOption?: boolean;
+  /** Podcast pages have an Archived tab instead. */
+  showArchivedOption?: boolean;
 }
 
 function Field({
@@ -37,6 +43,11 @@ function Field({
   );
 }
 
+const chipClass = (pressed: boolean) =>
+  `rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+    pressed ? 'bg-fg text-bg' : 'bg-surface-2 text-fg-muted hover:text-fg'
+  }`;
+
 const selectClass =
   'w-full rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm focus:border-brand focus:outline-none';
 
@@ -44,11 +55,22 @@ export function FilterEditor({
   value,
   onChange,
   showVideoOption,
+  showArchivedOption,
 }: FilterEditorProps) {
   const { t } = useTranslation();
   const ids = { min: useId(), max: useId(), days: useId(), text: useId() };
   const set = (patch: Partial<FilterCriteria>) =>
     onChange({ ...value, ...patch });
+  const statusOptions = LISTENING_STATUSES.filter(
+    (s) => showArchivedOption || s !== 'archived',
+  );
+  const toggleStatus = (status: ListeningStatus) => {
+    const next = value.statuses.includes(status)
+      ? value.statuses.filter((s) => s !== status)
+      : statusOptions.filter((s) => s === status || value.statuses.includes(s));
+    // Every status ticked is the same as no filter.
+    set({ statuses: next.length === statusOptions.length ? [] : next });
+  };
   const numberOrNull = (raw: string) => (raw === '' ? null : Number(raw));
   const customDays =
     value.withinDays !== null && !DAY_CHIPS.includes(value.withinDays);
@@ -103,11 +125,7 @@ export function FilterEditor({
                 setDaysDraft('');
                 set({ withinDays: days });
               }}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-                value.withinDays === days
-                  ? 'bg-fg text-bg'
-                  : 'bg-surface-2 text-fg-muted hover:text-fg'
-              }`}
+              className={chipClass(value.withinDays === days)}
             >
               {days === null
                 ? t('filters.any')
@@ -139,16 +157,31 @@ export function FilterEditor({
       </Field>
 
       <Field label={t('filters.status')}>
-        <SegmentedControl<ListeningStatus>
-          label={t('filters.status')}
-          value={value.status}
-          onChange={(status) => set({ status })}
-          options={[
-            { value: 'any', label: t('filters.statusAny') },
-            { value: 'not-started', label: t('filters.statusNotStarted') },
-            { value: 'in-progress', label: t('filters.statusInProgress') },
-          ]}
-        />
+        <div
+          role="group"
+          aria-label={t('filters.status')}
+          className="flex flex-wrap gap-2"
+        >
+          <button
+            type="button"
+            aria-pressed={value.statuses.length === 0}
+            onClick={() => set({ statuses: [] })}
+            className={chipClass(value.statuses.length === 0)}
+          >
+            {t('filters.statusAny')}
+          </button>
+          {statusOptions.map((status) => (
+            <button
+              key={status}
+              type="button"
+              aria-pressed={value.statuses.includes(status)}
+              onClick={() => toggleStatus(status)}
+              className={chipClass(value.statuses.includes(status))}
+            >
+              {t(statusLabels[status])}
+            </button>
+          ))}
+        </div>
       </Field>
 
       <Field label={t('filters.text')} htmlFor={ids.text}>

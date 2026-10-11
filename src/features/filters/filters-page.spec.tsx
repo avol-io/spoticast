@@ -63,7 +63,6 @@ describe('FiltersPage', () => {
           name: 'Short',
           criteria: { ...emptyCriteria, maxMinutes: 20 },
           showIds: null,
-          includeArchived: false,
           sort: 'newest',
           spotifyPlaylist: true,
           playlistId: null,

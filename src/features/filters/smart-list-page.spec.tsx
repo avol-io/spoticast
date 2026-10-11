@@ -65,7 +65,6 @@ describe('SmartListPage', () => {
           name: 'Quick',
           criteria: { ...emptyCriteria, maxMinutes: 30 },
           showIds: null,
-          includeArchived: false,
           sort: 'newest',
           spotifyPlaylist: false,
           playlistId: null,

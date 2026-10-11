@@ -13,7 +13,7 @@ describe('FilterSummary', () => {
           ...emptyCriteria,
           maxMinutes: 30,
           withinDays: 7,
-          status: 'not-started',
+          statuses: ['not-started'],
           text: 'ai',
         }}
         onClear={onClear}

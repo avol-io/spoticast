@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useAuth } from '../spotify/auth';
-import type { EpisodeSort, FilterCriteria } from '../filters/engine';
+import {
+  legacyStatuses,
+  type EpisodeSort,
+  type FilterCriteria,
+  type LegacyStatus,
+} from '../filters/engine';
 
 export interface FilterPreset {
   id: string;
@@ -16,7 +21,6 @@ export interface SmartList {
   criteria: FilterCriteria;
   /** null = every followed podcast. */
   showIds: string[] | null;
-  includeArchived: boolean;
   sort: EpisodeSort;
   /** Mirror into a "Spoticast - <name>" playlist rebuilt on startup. */
   spotifyPlaylist: boolean;
@@ -48,6 +52,41 @@ interface FiltersState {
     playlistName: string | null,
     playlistDescription: string | null,
   ) => void;
+}
+
+type LegacyCriteria = Omit<FilterCriteria, 'statuses'> & {
+  status?: LegacyStatus;
+};
+
+function migrateStatuses(
+  state: Pick<FiltersState, 'smartLists' | 'presets' | 'podcast'>,
+) {
+  // Podcast filters had no archived switch: the page has an Archived tab.
+  const convert = (c: FilterCriteria): FilterCriteria => {
+    const { status, ...rest } = c as LegacyCriteria;
+    return { ...rest, statuses: status && status !== 'any' ? [status] : [] };
+  };
+  state.presets = (state.presets ?? []).map((p) => ({
+    ...p,
+    criteria: convert(p.criteria),
+  }));
+  state.podcast = Object.fromEntries(
+    Object.entries(state.podcast ?? {}).map(([id, c]) => [id, convert(c)]),
+  );
+  state.smartLists = (state.smartLists ?? []).map((l) => {
+    const { includeArchived, ...list } = l as SmartList & {
+      includeArchived?: boolean;
+    };
+    if (!list.criteria) return list;
+    const { status, ...criteria } = list.criteria as LegacyCriteria;
+    return {
+      ...list,
+      criteria: {
+        ...criteria,
+        statuses: legacyStatuses(status, !!includeArchived),
+      },
+    };
+  });
 }
 
 const newId = () => crypto.randomUUID().slice(0, 8);
@@ -102,9 +141,12 @@ export const useFilters = create<FiltersState>()(
     }),
     {
       name: 'spoticast.filters',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
-        const state = persisted as Pick<FiltersState, 'smartLists'>;
+        const state = persisted as Pick<
+          FiltersState,
+          'smartLists' | 'presets' | 'podcast'
+        >;
         if (version < 2) {
           // Lists from before sync: any copy found on Spotify wins over them.
           state.smartLists = (state.smartLists ?? []).map((l) => ({
@@ -113,6 +155,7 @@ export const useFilters = create<FiltersState>()(
             updatedAt: 0,
           }));
         }
+        if (version < 3) migrateStatuses(state);
         return state as FiltersState;
       },
     },

@@ -1,14 +1,33 @@
-import { episodeProgress, isVideoShow, releaseDate } from '../episodes';
+import { isFullyPlayed, isVideoShow, releaseDate } from '../episodes';
 import type { SimplifiedEpisode, SimplifiedShow } from '../spotify/types';
 
-export type ListeningStatus = 'any' | 'not-started' | 'in-progress';
+export type ListeningStatus = 'not-started' | 'in-progress' | 'archived';
+
+export const LISTENING_STATUSES: ListeningStatus[] = [
+  'not-started',
+  'in-progress',
+  'archived',
+];
+
+/** Before v3 a filter had one status, plus "include archived" on smart lists. */
+export type LegacyStatus = 'any' | 'not-started' | 'in-progress';
+
+export function legacyStatuses(
+  status: LegacyStatus | undefined,
+  includeArchived: boolean,
+): ListeningStatus[] {
+  if (!status || status === 'any')
+    return includeArchived ? [] : ['not-started', 'in-progress'];
+  return includeArchived ? [status, 'archived'] : [status];
+}
 
 export interface FilterCriteria {
   minMinutes: number | null;
   maxMinutes: number | null;
   /** Published in the last N days (today counts as day 1). */
   withinDays: number | null;
-  status: ListeningStatus;
+  /** Any of these; empty = every status. */
+  statuses: ListeningStatus[];
   /** Matched against title and description, ignoring case and accents. */
   text: string;
   /** Video podcasts only (Spotify flags video per show). */
@@ -19,7 +38,7 @@ export const emptyCriteria: FilterCriteria = {
   minMinutes: null,
   maxMinutes: null,
   withinDays: null,
-  status: 'any',
+  statuses: [],
   text: '',
   videoOnly: false,
 };
@@ -29,7 +48,7 @@ export function isEmptyCriteria(c: FilterCriteria): boolean {
     c.minMinutes === null &&
     c.maxMinutes === null &&
     c.withinDays === null &&
-    c.status === 'any' &&
+    c.statuses.length === 0 &&
     c.text.trim() === '' &&
     !c.videoOnly
   );
@@ -42,13 +61,31 @@ export const fold = (value: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
 
+/** A restored episode counts as not started, even if Spotify says played. */
+export function listeningStatus(
+  episode: SimplifiedEpisode,
+  isArchived: (episode: SimplifiedEpisode) => boolean = isFullyPlayed,
+): ListeningStatus {
+  if (isArchived(episode)) return 'archived';
+  const resume = episode.resume_point;
+  return !resume?.fully_played && (resume?.resume_position_ms ?? 0) > 0
+    ? 'in-progress'
+    : 'not-started';
+}
+
 export function matchesCriteria(
   episode: SimplifiedEpisode,
   criteria: FilterCriteria,
   {
     show,
     now = new Date(),
-  }: { show?: Pick<SimplifiedShow, 'media_type'>; now?: Date } = {},
+    isArchived = isFullyPlayed,
+  }: {
+    show?: Pick<SimplifiedShow, 'media_type'>;
+    now?: Date;
+    /** Archived as the app sees it (useIsArchived); defaults to Spotify's. */
+    isArchived?: (episode: SimplifiedEpisode) => boolean;
+  } = {},
 ): boolean {
   const minutes = episode.duration_ms / 60_000;
   if (criteria.minMinutes !== null && minutes < criteria.minMinutes)
@@ -65,12 +102,11 @@ export function matchesCriteria(
     if (releaseDate(episode) < cutoff) return false;
   }
 
-  if (criteria.status !== 'any') {
-    const played = episode.resume_point?.fully_played ?? false;
-    const started = episodeProgress(episode).started;
-    if (criteria.status === 'not-started' && (started || played)) return false;
-    if (criteria.status === 'in-progress' && (!started || played)) return false;
-  }
+  if (
+    criteria.statuses.length > 0 &&
+    !criteria.statuses.includes(listeningStatus(episode, isArchived))
+  )
+    return false;
 
   const text = fold(criteria.text.trim());
   if (

@@ -47,7 +47,7 @@ export const SMART_PLAYLIST_PREFIX = 'Spoticast - ';
 
 /** Episodes of a smart list, newest page of each selected show. */
 export function selectSmartEpisodes(
-  list: Pick<SmartList, 'criteria' | 'showIds' | 'includeArchived' | 'sort'>,
+  list: Pick<SmartList, 'criteria' | 'showIds' | 'sort'>,
   shows: SimplifiedShow[],
   pages: (Paging<SimplifiedEpisode> | undefined)[],
   isArchived: (episode: SimplifiedEpisode) => boolean,
@@ -56,10 +56,9 @@ export function selectSmartEpisodes(
   const items = shows.flatMap((show, i) =>
     (pages[i]?.items ?? [])
       .filter(
-        (episode) => episode && (list.includeArchived || !isArchived(episode)),
-      )
-      .filter((episode) =>
-        matchesCriteria(episode, list.criteria, { show, now }),
+        (episode) =>
+          episode &&
+          matchesCriteria(episode, list.criteria, { show, now, isArchived }),
       )
       .map((episode) => ({ episode: { ...episode, show } as Episode })),
   );

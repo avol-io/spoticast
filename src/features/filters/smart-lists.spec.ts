@@ -34,9 +34,12 @@ const page = (...items: SimplifiedEpisode[]) =>
 const list: SmartList = {
   id: 'l1',
   name: 'Quick',
-  criteria: { ...emptyCriteria, maxMinutes: 30 },
+  criteria: {
+    ...emptyCriteria,
+    maxMinutes: 30,
+    statuses: ['not-started', 'in-progress'],
+  },
   showIds: null,
-  includeArchived: false,
   sort: 'newest',
   spotifyPlaylist: true,
   playlistId: null,
@@ -61,7 +64,7 @@ describe('selectSmartEpisodes', () => {
 
   it('can include archived episodes', () => {
     const result = selectSmartEpisodes(
-      { ...list, includeArchived: true },
+      { ...list, criteria: { ...list.criteria, statuses: [] } },
       shows,
       pages,
       isArchived,

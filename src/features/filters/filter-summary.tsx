@@ -1,6 +1,12 @@
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import type { FilterCriteria } from '../../lib/filters/engine';
+import type { FilterCriteria, ListeningStatus } from '../../lib/filters/engine';
+
+export const statusLabels = {
+  'not-started': 'filters.statusNotStarted',
+  'in-progress': 'filters.statusInProgress',
+  archived: 'filters.statusArchived',
+} as const satisfies Record<ListeningStatus, string>;
 
 /** Short human-readable parts of a filter, e.g. ["≤ 30 min", "last 7 days"]. */
 export function criteriaSummary(c: FilterCriteria, t: TFunction): string[] {
@@ -11,8 +17,7 @@ export function criteriaSummary(c: FilterCriteria, t: TFunction): string[] {
     parts.push(t('filters.summaryMax', { count: c.maxMinutes }));
   if (c.withinDays !== null)
     parts.push(t('filters.summaryDays', { count: c.withinDays }));
-  if (c.status === 'not-started') parts.push(t('filters.statusNotStarted'));
-  if (c.status === 'in-progress') parts.push(t('filters.statusInProgress'));
+  for (const status of c.statuses) parts.push(t(statusLabels[status]));
   if (c.text.trim())
     parts.push(t('filters.summaryText', { text: c.text.trim() }));
   if (c.videoOnly) parts.push(t('filters.summaryVideo'));

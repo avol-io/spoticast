@@ -61,12 +61,53 @@ describe('matchesCriteria', () => {
     const played = ep({
       resume_point: { fully_played: true, resume_position_ms: 0 },
     });
-    expect(match(ep(), { status: 'not-started' })).toBe(true);
-    expect(match(started, { status: 'not-started' })).toBe(false);
-    expect(match(played, { status: 'not-started' })).toBe(false);
-    expect(match(started, { status: 'in-progress' })).toBe(true);
-    expect(match(ep(), { status: 'in-progress' })).toBe(false);
-    expect(match(played, { status: 'in-progress' })).toBe(false);
+    expect(match(ep(), { statuses: ['not-started'] })).toBe(true);
+    expect(match(started, { statuses: ['not-started'] })).toBe(false);
+    expect(match(played, { statuses: ['not-started'] })).toBe(false);
+    expect(match(started, { statuses: ['in-progress'] })).toBe(true);
+    expect(match(ep(), { statuses: ['in-progress'] })).toBe(false);
+    expect(match(played, { statuses: ['in-progress'] })).toBe(false);
+    expect(match(played, { statuses: ['archived'] })).toBe(true);
+    expect(match(played, {})).toBe(true);
+  });
+
+  it('combines listening statuses', () => {
+    const started = ep({
+      resume_point: { fully_played: false, resume_position_ms: 60_000 },
+    });
+    const statuses: FilterCriteria['statuses'] = ['not-started', 'in-progress'];
+    expect(match(ep(), { statuses })).toBe(true);
+    expect(match(started, { statuses })).toBe(true);
+    expect(
+      match(
+        ep({ resume_point: { fully_played: true, resume_position_ms: 0 } }),
+        {
+          statuses,
+        },
+      ),
+    ).toBe(false);
+  });
+
+  it('uses the app notion of archived when given', () => {
+    const played = ep({
+      resume_point: { fully_played: true, resume_position_ms: 0 },
+    });
+    // Archived here, pending sync: not started on Spotify yet.
+    expect(
+      matchesCriteria(
+        ep(),
+        { ...emptyCriteria, statuses: ['archived'] },
+        { isArchived: () => true },
+      ),
+    ).toBe(true);
+    // Restored: counts as not started again.
+    expect(
+      matchesCriteria(
+        played,
+        { ...emptyCriteria, statuses: ['not-started'] },
+        { isArchived: () => false },
+      ),
+    ).toBe(true);
   });
 
   it('searches title and description ignoring case and accents', () => {

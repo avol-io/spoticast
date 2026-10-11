@@ -1,12 +1,17 @@
 import type { SmartList } from '../storage/filters';
-import type { EpisodeSort, FilterCriteria, ListeningStatus } from './engine';
+import {
+  legacyStatuses,
+  type EpisodeSort,
+  type FilterCriteria,
+  type ListeningStatus,
+} from './engine';
 
 /**
  * Smart lists synced across devices travel in the description of their
  * Spotify playlist: a readable prefix, then `sc1:` and a base64url payload
  * (or `sc1:local.<updatedAt>` when the config is too long to fit).
  */
-export const DESCRIPTION_PREFIX = 'Spoticast smart filter · ';
+export const DESCRIPTION_PREFIX = 'Spoticast smart playlist · ';
 /** Spotify's limit for playlist descriptions. */
 export const MAX_DESCRIPTION = 300;
 const MARKER = 'sc1:';
@@ -15,10 +20,7 @@ const LOCAL = 'local.';
 const SHOW_PREFIX = 5;
 const VERSION = 1;
 
-export type SyncedConfig = Pick<
-  SmartList,
-  'criteria' | 'showIds' | 'includeArchived' | 'sort'
->;
+export type SyncedConfig = Pick<SmartList, 'criteria' | 'showIds' | 'sort'>;
 type Encodable = SyncedConfig & Pick<SmartList, 'updatedAt'>;
 
 export type DecodedDescription =
@@ -28,11 +30,6 @@ export type DecodedDescription =
   | { kind: 'local'; updatedAt: number }
   | { kind: 'valid'; updatedAt: number; config: SyncedConfig };
 
-const statusCodes: Record<ListeningStatus, string> = {
-  any: 'a',
-  'not-started': 'n',
-  'in-progress': 'p',
-};
 const sortCodes: Record<EpisodeSort, string> = {
   newest: 'n',
   oldest: 'o',
@@ -44,7 +41,6 @@ const reverse = <T extends string>(codes: Record<T, string>) =>
     string,
     T | undefined
   >;
-const statusByCode = reverse(statusCodes);
 const sortByCode = reverse(sortCodes);
 
 // Spotify HTML-escapes descriptions on read; these chars never get escaped.
@@ -70,19 +66,43 @@ function fromBase64Url(value: string): string {
 const showPrefixes = (showIds: string[] | null) =>
   showIds && showIds.map((id) => id.slice(0, SHOW_PREFIX)).join('');
 
+/**
+ * Statuses travel as the v1 status code plus the "include archived" flag, so
+ * older versions still read them; only "archived alone" needs the new `x`.
+ */
+function encodeStatuses(statuses: ListeningStatus[]): [string, 0 | 1] {
+  const has = (s: ListeningStatus) => statuses.includes(s);
+  const archived = has('archived') || statuses.length === 0 ? 1 : 0;
+  if (has('not-started') === has('in-progress'))
+    return has('not-started') || statuses.length === 0
+      ? ['a', archived]
+      : ['x', 1];
+  return [has('not-started') ? 'n' : 'p', archived];
+}
+
+function decodeStatuses(code: string, archived: 0 | 1) {
+  if (code === 'x')
+    return archived ? (['archived'] as ListeningStatus[]) : null;
+  if (code === 'a') return legacyStatuses('any', archived === 1);
+  if (code === 'n') return legacyStatuses('not-started', archived === 1);
+  if (code === 'p') return legacyStatuses('in-progress', archived === 1);
+  return null;
+}
+
 /** The sync payload, or null when the description would exceed Spotify's limit. */
 export function encodeSmartList(list: Encodable): string | null {
   const c = list.criteria;
+  const [status, archived] = encodeStatuses(c.statuses);
   const payload = [
     VERSION,
     list.updatedAt.toString(36),
     c.minMinutes,
     c.maxMinutes,
     c.withinDays,
-    statusCodes[c.status],
+    status,
     c.text,
     c.videoOnly ? 1 : 0,
-    list.includeArchived ? 1 : 0,
+    archived,
     sortCodes[list.sort],
     showPrefixes(list.showIds),
   ];
@@ -127,7 +147,8 @@ function parsePayload(token: string): DecodedDescription {
     return { kind: 'invalid' };
   const [, u, mn, mx, d, st, t, vo, a, o, s] = data;
   const updatedAt = parseTime(u);
-  const status = typeof st === 'string' ? statusByCode[st] : undefined;
+  const statuses =
+    typeof st === 'string' && isFlag(a) ? decodeStatuses(st, a) : null;
   const sort = typeof o === 'string' ? sortByCode[o] : undefined;
   const showIds = parseShows(s);
   if (
@@ -135,10 +156,9 @@ function parsePayload(token: string): DecodedDescription {
     !isCount(mn) ||
     !isCount(mx) ||
     !isCount(d) ||
-    !status ||
+    !statuses ||
     typeof t !== 'string' ||
     !isFlag(vo) ||
-    !isFlag(a) ||
     !sort ||
     showIds === undefined
   )
@@ -147,14 +167,14 @@ function parsePayload(token: string): DecodedDescription {
     minMinutes: mn,
     maxMinutes: mx,
     withinDays: d,
-    status,
+    statuses,
     text: t,
     videoOnly: vo === 1,
   };
   return {
     kind: 'valid',
     updatedAt,
-    config: { criteria, showIds, includeArchived: a === 1, sort },
+    config: { criteria, showIds, sort },
   };
 }
 

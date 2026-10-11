@@ -59,7 +59,9 @@ export function PodcastPage() {
 
   const loaded = flattenEpisodes(episodesQuery.data);
   const all = filtered
-    ? loaded.filter((ep) => matchesCriteria(ep, criteria, { show: show.data }))
+    ? loaded.filter((ep) =>
+        matchesCriteria(ep, criteria, { show: show.data, isArchived }),
+      )
     : loaded;
   const archived = all.filter(isArchived);
   const unplayed = all.filter((ep) => !isArchived(ep));
