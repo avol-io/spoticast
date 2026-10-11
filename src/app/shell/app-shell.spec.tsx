@@ -9,6 +9,9 @@ vi.mock('../../features/filters/smart-playlists-runtime', () => ({
 vi.mock('../../features/player/player-runtime', () => ({
   default: () => null,
 }));
+vi.mock('../../features/player/mini-player', () => ({
+  default: () => null,
+}));
 
 describe('AppShell', () => {
   it('renders the routed page inside both navigations', () => {

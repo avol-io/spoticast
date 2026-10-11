@@ -13,6 +13,7 @@ import {
   transferPlayback,
 } from '../../lib/spotify/endpoints';
 import type { Episode } from '../../lib/spotify/types';
+import { useSettings } from '../../lib/storage/settings';
 import { toast } from '../../lib/storage/toasts';
 import { libraryKeys } from '../library/queries';
 import {
@@ -30,6 +31,7 @@ import {
   finishedEpisode,
   fromApiState,
   fromSdkState,
+  pickPlaybackDevice,
   pickSpotifyAppDevice,
   type NowPlaying,
 } from './playback';
@@ -142,6 +144,10 @@ export async function initPlayer() {
 
   instance.addListener('ready', ({ device_id }) => {
     usePlayer.setState({ sdkStatus: 'ready', localDeviceId: device_id });
+    // First run: this browser is the default device.
+    const settings = useSettings.getState();
+    if (!settings.preferredDevice)
+      settings.setPreferredDevice({ kind: 'local' });
   });
   instance.addListener('not_ready', () => {
     usePlayer.setState({ sdkStatus: 'loading' });
@@ -242,13 +248,20 @@ function onTarget<T>(
     : branches.remote(np.deviceId ?? undefined);
 }
 
-/** Device to start playback on: where it's already playing, else this browser. */
+/**
+ * Device to start playback on: where something is loaded, else the
+ * preferred device (saving the default when there is no preference yet).
+ */
 async function targetDevice(): Promise<string | undefined> {
   const { nowPlaying, localDeviceId } = usePlayer.getState();
   if (nowPlaying?.deviceId) return nowPlaying.deviceId;
-  if (localDeviceId) return localDeviceId;
-  const devices = await getDevices();
-  return (devices.find((d) => d.is_active) ?? devices[0])?.id ?? undefined;
+  const { preferredDevice, setPreferredDevice } = useSettings.getState();
+  const localWins =
+    !!localDeviceId && (!preferredDevice || preferredDevice.kind === 'local');
+  const devices = localWins ? [] : await getDevices();
+  const picked = pickPlaybackDevice(preferredDevice, devices, localDeviceId);
+  if (picked && !preferredDevice) setPreferredDevice(picked.preference);
+  return picked?.deviceId;
 }
 
 // --- Up Next sync -------------------------------------------------------------

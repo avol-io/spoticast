@@ -151,6 +151,9 @@ export const it: Dictionary = {
     next: 'Episodio successivo',
     seek: 'Posizione',
     devices: 'Dispositivi',
+    nothingPlaying: 'Niente in riproduzione',
+    deviceLabel: 'Dispositivo di riproduzione: {{name}}',
+    chooseDevice: 'Scegli un dispositivo',
     thisDevice: 'Questo browser',
     noOtherDevices:
       'Nessun altro dispositivo Spotify trovato. Apri Spotify su un altro dispositivo per vederlo qui.',

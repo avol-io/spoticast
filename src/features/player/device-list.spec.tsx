@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as endpoints from '../../lib/spotify/endpoints';
 import type { Device } from '../../lib/spotify/types';
+import { useSettings } from '../../lib/storage/settings';
+import type { NowPlaying } from './playback';
 import * as controller from './player-controller';
 import { usePlayer } from './player-store';
 
@@ -16,10 +18,10 @@ describe('DeviceList', () => {
       sdkStatus: 'idle',
       nowPlaying: null,
     });
+    useSettings.setState({ preferredDevice: null });
   });
 
-  it('lists this browser and other devices, and transfers on tap', async () => {
-    usePlayer.setState({ localDeviceId: 'web', sdkStatus: 'ready' });
+  const mockDevices = () =>
     vi.spyOn(endpoints, 'getDevices').mockResolvedValue([
       {
         id: 'web',
@@ -34,16 +36,46 @@ describe('DeviceList', () => {
         is_active: true,
       } as Device,
     ]);
-    const transfer = vi.spyOn(controller, 'transferTo').mockResolvedValue();
+  const renderList = () =>
     render(
       <QueryClientProvider client={new QueryClient()}>
         <DeviceList />
       </QueryClientProvider>,
     );
+
+  it('moves what is playing and remembers the choice', async () => {
+    usePlayer.setState({
+      localDeviceId: 'web',
+      sdkStatus: 'ready',
+      nowPlaying: { deviceId: 'phone' } as NowPlaying,
+    });
+    mockDevices();
+    const transfer = vi.spyOn(controller, 'transferTo').mockResolvedValue();
+    renderList();
     expect(
       await screen.findByRole('button', { name: /Pixel/ }),
     ).toHaveAttribute('aria-current', 'true');
     await userEvent.click(screen.getByRole('button', { name: /This browser/ }));
     expect(transfer).toHaveBeenCalledWith('web');
+    expect(useSettings.getState().preferredDevice).toEqual({ kind: 'local' });
+  });
+
+  it('only sets the preference when nothing is loaded', async () => {
+    usePlayer.setState({ localDeviceId: 'web', sdkStatus: 'ready' });
+    useSettings.setState({ preferredDevice: { kind: 'local' } });
+    mockDevices();
+    const transfer = vi.spyOn(controller, 'transferTo').mockResolvedValue();
+    renderList();
+    expect(
+      await screen.findByRole('button', { name: /This browser/ }),
+    ).toHaveAttribute('aria-current', 'true');
+    await userEvent.click(await screen.findByRole('button', { name: /Pixel/ }));
+    expect(transfer).not.toHaveBeenCalled();
+    expect(useSettings.getState().preferredDevice).toEqual({
+      kind: 'remote',
+      id: 'phone',
+      name: 'Pixel',
+      type: 'Smartphone',
+    });
   });
 });

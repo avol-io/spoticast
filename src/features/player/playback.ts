@@ -1,5 +1,10 @@
 import { pickImage } from '../../lib/episodes';
-import type { Device, PlaybackState } from '../../lib/spotify/types';
+import type {
+  Device,
+  DeviceType,
+  PlaybackState,
+} from '../../lib/spotify/types';
+import type { PreferredDevice } from '../../lib/storage/settings';
 
 /** What is playing, wherever it plays (this browser or another device). */
 export interface NowPlaying {
@@ -19,6 +24,8 @@ export interface NowPlaying {
   contextUri: string | null;
   deviceId: string | null;
   deviceName: string;
+  /** Spotify Connect type; absent for this browser. */
+  deviceType?: DeviceType;
   /** True when playing in this browser through the Web Playback SDK. */
   isLocal: boolean;
   video: boolean;
@@ -87,6 +94,7 @@ export function fromApiState(
     contextUri: state.context?.uri ?? null,
     deviceId: state.device.id,
     deviceName: state.device.name,
+    deviceType: state.device.type,
     isLocal: !!localDeviceId && state.device.id === localDeviceId,
     video: episode ? episode.show.media_type !== 'audio' : false,
   };
@@ -138,4 +146,52 @@ export function pickSpotifyAppDevice(
     candidates.find((d) => d.is_active) ??
     candidates[0]
   );
+}
+
+/** The preferred device among `devices`, or this browser when it is ready. */
+export function findPreferredDevice(
+  preferred: PreferredDevice | null,
+  devices: Device[],
+  localDeviceId: string | undefined,
+): string | undefined {
+  if (!preferred) return undefined;
+  if (preferred.kind === 'local') return localDeviceId;
+  const device =
+    devices.find((d) => d.id === preferred.id) ??
+    devices.find((d) => d.name === preferred.name && d.type === preferred.type);
+  return device?.id ?? undefined;
+}
+
+export const preferenceFor = (
+  device: Pick<Device, 'id' | 'name' | 'type'>,
+  localDeviceId: string | undefined,
+): PreferredDevice =>
+  device.id === localDeviceId
+    ? { kind: 'local' }
+    : {
+        kind: 'remote',
+        id: device.id ?? '',
+        name: device.name,
+        type: device.type,
+      };
+
+/**
+ * Where to start playback when nothing is playing: the preferred device if
+ * available, else this browser, else the first phone, else any device.
+ * `preference` is what to save when none is saved yet.
+ */
+export function pickPlaybackDevice(
+  preferred: PreferredDevice | null,
+  devices: Device[],
+  localDeviceId: string | undefined,
+): { deviceId: string; preference: PreferredDevice } | undefined {
+  const found = findPreferredDevice(preferred, devices, localDeviceId);
+  if (found && preferred) return { deviceId: found, preference: preferred };
+  if (localDeviceId)
+    return { deviceId: localDeviceId, preference: { kind: 'local' } };
+  const usable = devices.filter((d) => d.id && !d.is_restricted);
+  const device = usable.find((d) => d.type === 'Smartphone') ?? usable[0];
+  return device?.id
+    ? { deviceId: device.id, preference: preferenceFor(device, localDeviceId) }
+    : undefined;
 }

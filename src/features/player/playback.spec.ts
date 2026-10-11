@@ -4,6 +4,7 @@ import {
   finishedEpisode,
   fromApiState,
   fromSdkState,
+  pickPlaybackDevice,
   pickSpotifyAppDevice,
   type NowPlaying,
 } from './playback';
@@ -188,5 +189,51 @@ describe('pickSpotifyAppDevice', () => {
     expect(
       pickSpotifyAppDevice([device('web', 'Computer')], 'web', false),
     ).toBeUndefined();
+  });
+});
+
+describe('pickPlaybackDevice', () => {
+  const device = (id: string, type: string, name = id) =>
+    ({ id, type, name, is_active: false, is_restricted: false }) as Device;
+  const devices = [device('tv', 'TV'), device('pixel', 'Smartphone')];
+
+  it('uses the preferred device when available', () => {
+    expect(
+      pickPlaybackDevice(
+        { kind: 'remote', id: 'old-id', name: 'tv', type: 'TV' },
+        devices,
+        'web',
+      )?.deviceId,
+    ).toBe('tv');
+    expect(pickPlaybackDevice({ kind: 'local' }, devices, 'web')).toEqual({
+      deviceId: 'web',
+      preference: { kind: 'local' },
+    });
+  });
+
+  it('defaults to this browser, then to the first phone', () => {
+    expect(pickPlaybackDevice(null, devices, 'web')?.preference).toEqual({
+      kind: 'local',
+    });
+    expect(pickPlaybackDevice(null, devices, undefined)).toEqual({
+      deviceId: 'pixel',
+      preference: {
+        kind: 'remote',
+        id: 'pixel',
+        name: 'pixel',
+        type: 'Smartphone',
+      },
+    });
+  });
+
+  it('falls back when the preferred device is offline', () => {
+    expect(
+      pickPlaybackDevice(
+        { kind: 'remote', id: 'car', name: 'Car', type: 'Automobile' },
+        devices,
+        undefined,
+      )?.deviceId,
+    ).toBe('pixel');
+    expect(pickPlaybackDevice(null, [], undefined)).toBeUndefined();
   });
 });

@@ -3,6 +3,8 @@ import { Laptop, Monitor, Smartphone, Speaker, Tablet, Tv } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getDevices } from '../../lib/spotify/endpoints';
 import type { DeviceType } from '../../lib/spotify/types';
+import { useSettings } from '../../lib/storage/settings';
+import { findPreferredDevice, preferenceFor } from './playback';
 import { LOCAL_DEVICE_NAME, transferTo } from './player-controller';
 import { usePlayer } from './player-store';
 
@@ -16,13 +18,17 @@ const icons: Record<string, typeof Laptop> = {
   CastAudio: Speaker,
 };
 
-const iconFor = (type: DeviceType) => icons[type] ?? Monitor;
+export const iconFor = (type: DeviceType) => icons[type] ?? Monitor;
 
-/** Spotify Connect devices; tapping one moves playback there. */
+/**
+ * Spotify Connect devices. Tapping one makes it the preferred device and
+ * moves what is loaded there.
+ */
 export function DeviceList({ onPicked }: { onPicked?: () => void }) {
   const { t } = useTranslation();
   const { localDeviceId, sdkStatus, sdkError, sdkErrorDetail, nowPlaying } =
     usePlayer();
+  const { preferredDevice, setPreferredDevice } = useSettings();
   const devices = useQuery({
     queryKey: ['devices'],
     queryFn: getDevices,
@@ -34,7 +40,9 @@ export function DeviceList({ onPicked }: { onPicked?: () => void }) {
     (d) => d.id && d.id !== localDeviceId,
   );
   const activeId =
-    nowPlaying?.deviceId ?? devices.data?.find((d) => d.is_active)?.id;
+    nowPlaying?.deviceId ??
+    findPreferredDevice(preferredDevice, devices.data ?? [], localDeviceId) ??
+    devices.data?.find((d) => d.is_active)?.id;
   const entries = [
     ...(localDeviceId && sdkStatus === 'ready'
       ? [
@@ -71,7 +79,9 @@ export function DeviceList({ onPicked }: { onPicked?: () => void }) {
                 type="button"
                 aria-current={active}
                 onClick={() => {
-                  if (!active) void transferTo(d.id);
+                  setPreferredDevice(preferenceFor(d, localDeviceId));
+                  if (nowPlaying && d.id !== nowPlaying.deviceId)
+                    void transferTo(d.id);
                   onPicked?.();
                 }}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${

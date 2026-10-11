@@ -21,7 +21,6 @@ const VideoSheet = lazy(() => import('../../features/player/video-sheet'));
  */
 export function AppShell() {
   const { t } = useTranslation();
-  const hasPlayer = usePlayer((s) => s.nowPlaying !== null);
   const fullPlayerOpen = usePlayer((s) => s.fullPlayerOpen);
   const videoOpen = usePlayer((s) => s.video !== null);
   return (
@@ -40,11 +39,7 @@ export function AppShell() {
       <main
         id="main"
         tabIndex={-1}
-        className={`outline-none ${
-          hasPlayer
-            ? 'pb-[calc(9rem+env(safe-area-inset-bottom))] lg:pb-28'
-            : 'pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-8'
-        }`}
+        className="pb-[calc(9rem+env(safe-area-inset-bottom))] outline-none lg:pb-28"
       >
         <Outlet />
       </main>

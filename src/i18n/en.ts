@@ -146,6 +146,9 @@ export const en = {
     next: 'Next episode',
     seek: 'Position',
     devices: 'Devices',
+    nothingPlaying: 'Nothing playing',
+    deviceLabel: 'Playback device: {{name}}',
+    chooseDevice: 'Choose a device',
     thisDevice: 'This browser',
     noOtherDevices:
       'No other Spotify devices found. Open Spotify on another device to see it here.',

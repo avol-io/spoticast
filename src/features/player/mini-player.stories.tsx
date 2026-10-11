@@ -47,3 +47,9 @@ export const OnAnotherDevice: Story = {
     return () => usePlayer.setState({ nowPlaying: null });
   },
 };
+
+export const Idle: Story = {
+  beforeEach: () => {
+    usePlayer.setState({ nowPlaying: null });
+  },
+};

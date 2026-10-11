@@ -1,5 +1,9 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import type { Episode } from '../../lib/spotify/types';
+import { queueKey, type QueueData } from '../queue/queue';
 import type { NowPlaying } from './playback';
 import * as controller from './player-controller';
 import { usePlayer } from './player-store';
@@ -24,16 +28,51 @@ describe('MiniPlayer', () => {
     usePlayer.setState({ nowPlaying: null, fullPlayerOpen: false });
   });
 
-  it('is hidden when nothing plays', () => {
-    const { container } = render(<MiniPlayer />);
-    expect(container).toBeEmptyDOMElement();
+  const renderMini = (episodes: Episode[] = []) => {
+    const client = new QueryClient();
+    client.setQueryData<QueueData>(queueKey, { episodes, otherCount: 0 });
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <MiniPlayer />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  };
+
+  it('says nothing is playing when Up Next is empty', () => {
+    renderMini();
+    expect(screen.getByText('Nothing playing')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Play' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Choose a device' }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers the head of Up Next when nothing plays', async () => {
+    const toggle = vi.spyOn(controller, 'togglePlay').mockResolvedValue();
+    renderMini([
+      {
+        uri: 'spotify:episode:q',
+        name: 'Queued episode',
+        duration_ms: 100_000,
+        images: [],
+        show: { name: 'Queued show', images: [] },
+      } as unknown as Episode,
+    ]);
+    expect(screen.getByText('Queued episode')).toBeInTheDocument();
+    expect(screen.getByText('Up Next · Queued show')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }));
+    expect(toggle).toHaveBeenCalled();
   });
 
   it('shows the remote device and controls playback', async () => {
     usePlayer.setState({ nowPlaying: np });
     const toggle = vi.spyOn(controller, 'togglePlay').mockResolvedValue();
     const skip = vi.spyOn(controller, 'skip').mockResolvedValue();
-    render(<MiniPlayer />);
+    renderMini();
     expect(screen.getByText('Playing on Kitchen speaker')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Play' }));
     expect(toggle).toHaveBeenCalled();
