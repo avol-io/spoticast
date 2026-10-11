@@ -34,7 +34,10 @@
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
         "vitest.explorer",
-        "ms-playwright.playwright"
+        "ms-playwright.playwright",
+        "Anthropic.claude-code",
+        "mhutchie.git-graph",
+        "eamodio.gitlens"
       ],
       "settings": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
