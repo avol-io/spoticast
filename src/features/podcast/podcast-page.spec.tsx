@@ -106,6 +106,10 @@ describe('PodcastPage', () => {
       podcast: { s1: { ...emptyCriteria, text: 'Episode 3' } },
     });
     renderPage();
+    expect(screen.getByRole('tab', { name: /filtered\s*1/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     const panel = screen.getByRole('tabpanel');
     expect(within(panel).getByText('Episode 3')).toBeInTheDocument();
     expect(within(panel).queryByText('Episode 1')).not.toBeInTheDocument();
@@ -113,7 +117,16 @@ describe('PodcastPage', () => {
       'aria-pressed',
       'true',
     );
+
+    // The other tabs ignore the filter.
+    await userEvent.click(screen.getByRole('tab', { name: /to listen/i }));
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Episode 1'),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /filtered/i }));
+
     await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.queryByRole('tab', { name: /filtered/i })).toBeNull();
     expect(
       within(screen.getByRole('tabpanel')).getByText('Episode 1'),
     ).toBeInTheDocument();

@@ -13,7 +13,7 @@ export interface PageHeaderProps {
 export function PageHeader({ title, mobileTitle, actions }: PageHeaderProps) {
   useDocumentTitle(title);
   return (
-    <header className="pt-safe sticky top-0 z-20 bg-bg/85 backdrop-blur-md">
+    <header className="pt-safe sticky top-0 z-20 bg-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 lg:h-16 lg:px-8">
         <div className="flex min-w-0 items-center gap-2.5">
           <AppMark />

@@ -1,11 +1,12 @@
 import { Archive, Check, Download, LogOut, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import BetaBadge from '../../app/ui/beta-badge';
 import PageHeader from '../../app/ui/page-header';
 import SegmentedControl from '../../app/ui/segmented-control';
 import { logout } from '../../lib/spotify/auth';
-import { isIos, promptInstall, useInstall } from '../../lib/pwa/install';
+import { promptInstall, useInstall } from '../../lib/pwa/install';
 import { applyUpdate, checkForUpdate, useUpdate } from '../../lib/pwa/update';
 import {
   MAX_ARCHIVE_ATTEMPTS,
@@ -57,13 +58,9 @@ function InstallSection() {
         ) : (
           <>
             <p className="min-w-0 flex-1 text-sm text-fg-muted">
-              {prompt
-                ? t('settings.installHint')
-                : isIos()
-                  ? t('settings.installIos')
-                  : t('settings.installUnavailable')}
+              {t('settings.installHint')}
             </p>
-            {prompt && (
+            {prompt ? (
               <button
                 type="button"
                 onClick={() => void promptInstall()}
@@ -72,6 +69,14 @@ function InstallSection() {
                 <Download className="size-4" aria-hidden />
                 {t('settings.install')}
               </button>
+            ) : (
+              <Link
+                to="/install"
+                className="flex items-center gap-1.5 rounded-full bg-surface-3 px-4 py-2 text-sm font-semibold"
+              >
+                <Download className="size-4" aria-hidden />
+                {t('install.how')}
+              </Link>
             )}
           </>
         )}

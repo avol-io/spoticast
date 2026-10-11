@@ -66,6 +66,11 @@ describe('MiniPlayer', () => {
     expect(screen.getByText('Up Next · Queued show')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Play' }));
     expect(toggle).toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole('button', { name: /Queued episode/ }),
+    );
+    expect(usePlayer.getState().fullPlayerOpen).toBe(true);
+    usePlayer.setState({ fullPlayerOpen: false });
   });
 
   it('shows the remote device and controls playback', async () => {

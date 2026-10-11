@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import InstallBanner from '../../features/install/install-banner';
 import { IS_BETA, LOGO_URL } from '../../lib/build-info';
 import BetaBadge from '../ui/beta-badge';
 import { navItems } from './nav-items';
@@ -36,6 +37,7 @@ export function Sidebar() {
           </li>
         ))}
       </ul>
+      <InstallBanner variant="sidebar" className="mt-auto" />
     </nav>
   );
 }

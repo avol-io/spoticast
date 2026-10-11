@@ -31,6 +31,46 @@ export function isIos(userAgent = navigator.userAgent): boolean {
   );
 }
 
+export function isAndroid(userAgent = navigator.userAgent): boolean {
+  return /android/i.test(userAgent);
+}
+
+export type InstallPlatform = 'ios' | 'android' | 'desktop';
+
+export function installPlatform(
+  userAgent = navigator.userAgent,
+): InstallPlatform {
+  if (isIos(userAgent)) return 'ios';
+  if (isAndroid(userAgent)) return 'android';
+  return 'desktop';
+}
+
+export type DesktopBrowser = 'chromium' | 'safari' | 'firefox' | 'other';
+
+/** Chrome and Edge install from the address bar, Safari from File. */
+export function desktopBrowser(
+  userAgent = navigator.userAgent,
+): DesktopBrowser {
+  if (/firefox\//i.test(userAgent)) return 'firefox';
+  if (/edg\/|chrome\/|chromium\//i.test(userAgent)) return 'chromium';
+  if (/safari\//i.test(userAgent)) return 'safari';
+  return 'other';
+}
+
+/**
+ * Whether this browser can install the app at all: with its own prompt, or by
+ * hand on iOS, Android and Safari on the Mac (Firefox on desktop cannot).
+ */
+export function canInstall(
+  hasPrompt: boolean,
+  userAgent = navigator.userAgent,
+): boolean {
+  if (hasPrompt) return true;
+  const platform = installPlatform(userAgent);
+  if (platform !== 'desktop') return true;
+  return desktopBrowser(userAgent) !== 'firefox';
+}
+
 /**
  * Must run before the first render: browsers fire beforeinstallprompt early
  * and only once.

@@ -61,6 +61,10 @@ export function SwipeRow({
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const open = offset !== 0 && !dragging;
+  // At rest the row is see-through (cover-tinted page backdrops show), and
+  // the actions under it hidden; moved, it covers them with the page color.
+  const [settling, setSettling] = useState(false);
+  const moved = offset !== 0 || dragging || settling;
   const rootRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<{
     id: number;
@@ -68,12 +72,24 @@ export function SwipeRow({
     y: number;
     base: number;
     mode: 'pending' | 'swipe' | 'scroll';
+    /** Latest offset of the swipe (state may lag a frame behind). */
+    last: number;
     timer?: ReturnType<typeof setTimeout>;
   } | null>(null);
   // The click that ends a swipe or a long press must not reach the content.
   const swallowClick = useRef(false);
 
-  const close = useCallback(() => setOffset(0), []);
+  const close = useCallback(() => {
+    // Keep covering the actions while the row slides back.
+    if (offset !== 0) setSettling(true);
+    setOffset(0);
+  }, [offset]);
+
+  useEffect(() => {
+    if (!settling) return;
+    const id = setTimeout(() => setSettling(false), 220);
+    return () => clearTimeout(id);
+  }, [settling]);
 
   useEffect(() => {
     if (!open) return;
@@ -110,6 +126,7 @@ export function SwipeRow({
       x: e.clientX,
       y: e.clientY,
       base: offset,
+      last: offset,
       mode: 'pending',
       timer: onLongPress
         ? setTimeout(() => {
@@ -139,8 +156,10 @@ export function SwipeRow({
       setDragging(true);
       e.currentTarget.setPointerCapture?.(e.pointerId);
     }
-    if (g.mode === 'swipe')
-      setOffset(Math.max(-width, Math.min(0, g.base + dx)));
+    if (g.mode === 'swipe') {
+      g.last = Math.max(-width, Math.min(0, g.base + dx));
+      setOffset(g.last);
+    }
   };
 
   const onPointerEnd = () => {
@@ -148,7 +167,9 @@ export function SwipeRow({
     if (g?.mode === 'swipe') {
       swallowClick.current = true;
       setDragging(false);
-      setOffset((current) => (current < -width / 2 ? -width : 0));
+      const next = g.last < -width / 2 ? -width : 0;
+      if (next === 0 && g.last !== 0) setSettling(true);
+      setOffset(next);
     }
     endGesture();
     // The click, if the browser sends one, follows right away.
@@ -188,7 +209,7 @@ export function SwipeRow({
     >
       {width > 0 && (
         <div
-          className="absolute inset-y-0 right-0 flex"
+          className={`absolute inset-y-0 right-0 flex ${moved ? '' : 'invisible'}`}
           style={{ width }}
           inert={!open}
         >
@@ -211,7 +232,7 @@ export function SwipeRow({
         </div>
       )}
       <div
-        className={`relative flex items-center bg-bg ${dragging ? '' : 'transition-transform duration-200'}`}
+        className={`relative flex items-center ${moved ? 'bg-bg' : ''} ${dragging ? '' : 'transition-transform duration-200'}`}
         style={{
           transform: offset ? `translateX(${offset}px)` : undefined,
           touchAction: 'pan-y',

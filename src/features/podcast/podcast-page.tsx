@@ -30,7 +30,8 @@ import EpisodeSwipeRow from './episode-swipe-row';
 import PodcastHero from './podcast-hero';
 import { useErrorText } from '../../lib/spotify/errors';
 
-type Tab = 'unplayed' | 'archived';
+/** The filtered tab exists only while the podcast has a filter, and comes first. */
+type Tab = 'filtered' | 'unplayed' | 'archived';
 
 /** Loads the next page when the sentinel scrolls into view. */
 function useAutoLoad(enabled: boolean, load: () => void) {
@@ -54,7 +55,6 @@ export function PodcastPage() {
   const { showId = '' } = useParams();
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'archived' ? 'archived' : 'unplayed';
 
   const show = useShow(showId);
   const episodesQuery = useShowEpisodes(showId);
@@ -66,16 +66,27 @@ export function PodcastPage() {
   const setPodcastFilter = useFilters((s) => s.setPodcastFilter);
   const filtered = !isEmptyCriteria(criteria);
   const [filterOpen, setFilterOpen] = useState(false);
+  // The criteria when the sheet opened: a change shows the filtered tab.
+  const criteriaAtOpen = useRef(criteria);
+  const param = params.get('tab');
+  const tab: Tab =
+    param === 'archived' || param === 'unplayed'
+      ? param
+      : filtered
+        ? 'filtered'
+        : 'unplayed';
 
+  // The filter applies to its own tab only: the others list everything.
   const loaded = flattenEpisodes(episodesQuery.data);
-  const all = filtered
+  const matching = filtered
     ? loaded.filter((ep) =>
         matchesCriteria(ep, criteria, { show: show.data, isArchived }),
       )
-    : loaded;
-  const archived = all.filter(isArchived);
-  const unplayed = all.filter((ep) => !isArchived(ep));
-  const visible = tab === 'archived' ? archived : unplayed;
+    : [];
+  const archived = loaded.filter(isArchived);
+  const unplayed = loaded.filter((ep) => !isArchived(ep));
+  const visible =
+    tab === 'filtered' ? matching : tab === 'archived' ? archived : unplayed;
   const listed: Episode[] = show.data
     ? visible.map((ep) => ({ ...ep, show: show.data }))
     : [];
@@ -86,10 +97,27 @@ export function PodcastPage() {
     fetchNextPage,
   );
 
+  // No param = the first tab: the filtered one when there is a filter.
   const setTab = (next: Tab) =>
-    setParams(next === 'archived' ? { tab: 'archived' } : {}, {
-      replace: true,
-    });
+    setParams(
+      next === 'archived' || (next === 'unplayed' && filtered)
+        ? { tab: next }
+        : {},
+      { replace: true },
+    );
+  const tabs: [Tab, string, number][] = [
+    ...(filtered
+      ? [
+          ['filtered', t('podcast.tabFiltered'), matching.length] as [
+            Tab,
+            string,
+            number,
+          ],
+        ]
+      : []),
+    ['unplayed', t('podcast.tabUnplayed'), unplayed.length],
+    ['archived', t('podcast.tabArchived'), archived.length],
+  ];
 
   return (
     <div
@@ -118,20 +146,19 @@ export function PodcastPage() {
         <section className="mt-6 lg:mt-0">
           <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-bg/80 px-4 py-2 backdrop-blur-md lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:backdrop-blur-none">
             <div className="flex items-center gap-1">
-              <div role="tablist" className="flex flex-1 gap-1">
-                {(
-                  [
-                    ['unplayed', t('podcast.tabUnplayed'), unplayed.length],
-                    ['archived', t('podcast.tabArchived'), archived.length],
-                  ] as const
-                ).map(([value, label, count]) => (
+              {/* Scrolls sideways when the three tabs don't fit. */}
+              <div
+                role="tablist"
+                className="no-scrollbar -my-1 flex min-w-0 flex-1 gap-1 overflow-x-auto py-1"
+              >
+                {tabs.map(([value, label, count]) => (
                   <button
                     key={value}
                     type="button"
                     role="tab"
                     aria-selected={tab === value}
                     onClick={() => setTab(value)}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                    className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
                       tab === value
                         ? 'bg-fg text-bg'
                         : 'text-fg-muted hover:bg-surface-2'
@@ -155,21 +182,31 @@ export function PodcastPage() {
               <IconButton
                 label={t('filters.filter')}
                 aria-pressed={filtered}
-                onClick={() => setFilterOpen(true)}
+                onClick={() => {
+                  criteriaAtOpen.current = criteria;
+                  setFilterOpen(true);
+                }}
                 className={filtered ? 'bg-accent/20 text-accent-ink' : ''}
               >
                 <SlidersHorizontal />
               </IconButton>
             </div>
-            <FilterSummary
-              criteria={criteria}
-              onClear={() => setPodcastFilter(showId, null)}
-            />
+            {tab === 'filtered' && (
+              <FilterSummary
+                criteria={criteria}
+                onClear={() => setPodcastFilter(showId, null)}
+              />
+            )}
           </div>
           <PodcastFilterSheet
             showId={showId}
             open={filterOpen}
-            onClose={() => setFilterOpen(false)}
+            onClose={() => {
+              setFilterOpen(false);
+              // Show what the filter just set picks.
+              if (filtered && criteria !== criteriaAtOpen.current)
+                setTab('filtered');
+            }}
           />
 
           <div role="tabpanel">
@@ -188,7 +225,7 @@ export function PodcastPage() {
                 description={errorText(episodesQuery.error)}
               />
             ) : visible.length === 0 && !hasNextPage ? (
-              filtered ? (
+              tab === 'filtered' ? (
                 <EmptyState
                   icon={<SlidersHorizontal />}
                   title={t('filters.noMatches')}
@@ -210,7 +247,7 @@ export function PodcastPage() {
                 {visible.map((episode, i) => {
                   const row = (
                     <EpisodeRow
-                      episode={episode}
+                      episode={listed[i] ?? episode}
                       video={isVideoShow(show.data)}
                       actions={
                         show.data && (

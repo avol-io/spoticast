@@ -55,7 +55,14 @@ describe('DeviceList', () => {
     expect(
       await screen.findByRole('button', { name: /Pixel/ }),
     ).toHaveAttribute('aria-current', 'true');
-    await userEvent.click(screen.getByRole('button', { name: /This browser/ }));
+    const here = screen.getByRole('button', { name: /This browser/ });
+    // Named as Spotify Connect sees it, with the app icon.
+    expect(here).toHaveTextContent(/^Spoticast/);
+    expect(here.querySelector('img')).toHaveAttribute(
+      'src',
+      expect.stringContaining('logo'),
+    );
+    await userEvent.click(here);
     expect(transfer).toHaveBeenCalledWith('web');
     expect(useSettings.getState().preferredDevice).toEqual({ kind: 'local' });
   });

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Laptop, Monitor, Smartphone, Speaker, Tablet, Tv } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { LOGO_URL } from '../../lib/build-info';
 import { getDevices } from '../../lib/spotify/endpoints';
 import type { DeviceType } from '../../lib/spotify/types';
 import { useSettings } from '../../lib/storage/settings';
@@ -48,9 +49,11 @@ export function DeviceList({ onPicked }: { onPicked?: () => void }) {
       ? [
           {
             id: localDeviceId,
-            name: t('player.thisDevice'),
-            detail: LOCAL_DEVICE_NAME,
+            // The name Spotify Connect shows for us, with the app icon.
+            name: LOCAL_DEVICE_NAME,
+            detail: t('player.thisDevice'),
             type: 'Computer',
+            local: true,
           },
         ]
       : []),
@@ -59,6 +62,7 @@ export function DeviceList({ onPicked }: { onPicked?: () => void }) {
       name: d.name,
       detail: d.type,
       type: d.type,
+      local: false,
     })),
   ];
 
@@ -88,7 +92,11 @@ export function DeviceList({ onPicked }: { onPicked?: () => void }) {
                   active ? 'bg-accent/20 text-accent-ink' : 'hover:bg-surface-3'
                 }`}
               >
-                <Icon className="size-5 shrink-0" aria-hidden />
+                {d.local ? (
+                  <img src={LOGO_URL} alt="" className="size-5 shrink-0" />
+                ) : (
+                  <Icon className="size-5 shrink-0" aria-hidden />
+                )}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{d.name}</span>
                   <span className="block truncate text-xs opacity-70">

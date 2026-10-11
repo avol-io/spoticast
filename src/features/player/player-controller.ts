@@ -555,8 +555,13 @@ export function resetQueueSync() {
 /**
  * Plays an episode Pocket Casts style: it moves to the head of Up Next and
  * the Spoticast playlist plays from there, so the queue continues after it.
+ * It starts at `positionMs` when given (moved before playing), else where
+ * it was left.
  */
-export function playEpisode(episode: Episode): Promise<void> {
+export function playEpisode(
+  episode: Episode,
+  { positionMs }: { positionMs?: number } = {},
+): Promise<void> {
   userAction();
   // iOS only lets audio start inside the user gesture.
   void player?.activateElement();
@@ -567,7 +572,7 @@ export function playEpisode(episode: Episode): Promise<void> {
     await startUpNext({
       deviceId: await targetDevice(),
       uri: episode.uri,
-      positionMs: resumePosition(episode),
+      positionMs: positionMs ?? resumePosition(episode),
     });
   });
 }

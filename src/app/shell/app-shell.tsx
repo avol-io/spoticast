@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, ScrollRestoration } from 'react-router-dom';
 import AddToPlaylistSheet from '../../features/filters/add-to-playlist-sheet';
@@ -15,16 +15,42 @@ import Sidebar from './sidebar';
 import StatusBanners from './status-banners';
 
 // Only needed once opened: keep them out of the initial bundle.
-const FullPlayer = lazy(() => import('../../features/player/full-player'));
 const VideoSheet = lazy(() => import('../../features/player/video-sheet'));
+// Mounted from the start (they render nothing while closed), so their chunks
+// load right after the first render and the first opening can run its view
+// transition.
+const FullPlayer = lazy(() => import('../../features/player/full-player'));
+const EpisodeCard = lazy(() => import('../../features/episode/episode-card'));
 
 /**
- * Mobile: content + a bottom stack (toasts, mini player, nav). Desktop (lg+):
+ * Mobile: content + a bottom stack (toasts, banners, mini player, nav). Desktop (lg+):
  * fixed sidebar on the left and the mini player as a bottom bar.
  */
+/**
+ * Publishes the height of the bottom stack as --bottom-stack, so the end of
+ * the page scrolls clear of it whatever it holds (banners, selection bar).
+ */
+function useBottomStackHeight() {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() =>
+      root.style.setProperty('--bottom-stack', `${node.offsetHeight}px`),
+    );
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--bottom-stack');
+    };
+  }, []);
+  return ref;
+}
+
 export function AppShell() {
   const { t } = useTranslation();
-  const fullPlayerOpen = usePlayer((s) => s.fullPlayerOpen);
+  const stackRef = useBottomStackHeight();
   const videoOpen = usePlayer((s) => s.video !== null);
   const selecting = useSelection((s) => s.scope !== null);
   return (
@@ -39,32 +65,36 @@ export function AppShell() {
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 lg:block">
         <Sidebar />
       </aside>
-      <StatusBanners />
       <main
         id="main"
         tabIndex={-1}
-        className={`outline-none ${
-          selecting
-            ? 'pb-[calc(12rem+env(safe-area-inset-bottom))] lg:pb-48'
-            : 'pb-[calc(9rem+env(safe-area-inset-bottom))] lg:pb-28'
-        }`}
+        className="pb-[calc(var(--bottom-stack,9rem)+1.5rem)] outline-none"
       >
         <Outlet />
       </main>
-      <div className="fixed inset-x-0 bottom-0 z-30 lg:left-60">
+      {/* Above dialogs too: actions taken in a card confirm here. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[var(--bottom-stack,0px)] z-[60] lg:left-60">
         <Toaster />
-        <MiniPlayer />
-        {selecting ? (
-          <SelectionBar />
-        ) : (
-          <div className="lg:hidden">
-            <BottomNav />
-          </div>
-        )}
       </div>
+      <div className="fixed inset-x-0 bottom-0 z-30 lg:left-60">
+        <div ref={stackRef}>
+          <StatusBanners />
+          <MiniPlayer />
+          {selecting ? (
+            <SelectionBar />
+          ) : (
+            <div className="lg:hidden">
+              <BottomNav />
+            </div>
+          )}
+        </div>
+      </div>
+      <Suspense fallback={null}>{videoOpen && <VideoSheet />}</Suspense>
       <Suspense fallback={null}>
-        {fullPlayerOpen && <FullPlayer />}
-        {videoOpen && <VideoSheet />}
+        <FullPlayer />
+      </Suspense>
+      <Suspense fallback={null}>
+        <EpisodeCard />
       </Suspense>
       <AddToPlaylistSheet />
       <PlayerRuntime />

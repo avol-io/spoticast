@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  ExternalLink,
   ListChecks,
   MoreVertical,
   Pencil,
@@ -15,6 +14,7 @@ import EmptyState from '../../app/ui/empty-state';
 import IconButton from '../../app/ui/icon-button';
 import Menu from '../../app/ui/menu';
 import PageHeader from '../../app/ui/page-header';
+import SpotifyIcon from '../../app/ui/spotify-icon';
 import { isVideoShow } from '../../lib/episodes';
 import { useFilters, type SmartList } from '../../lib/storage/filters';
 import { toast } from '../../lib/storage/toasts';
@@ -96,7 +96,7 @@ export function SmartListPage() {
                   ? [
                       {
                         label: t('podcast.openInSpotify'),
-                        icon: <ExternalLink />,
+                        icon: <SpotifyIcon />,
                         onSelect: () =>
                           window.open(
                             `https://open.spotify.com/playlist/${list.playlistId}`,

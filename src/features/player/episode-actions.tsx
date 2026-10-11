@@ -1,7 +1,6 @@
 import {
   Archive,
   ArchiveRestore,
-  ExternalLink,
   ListEnd,
   ListMinus,
   ListPlus,
@@ -15,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Menu, { type MenuItem } from '../../app/ui/menu';
+import SpotifyIcon from '../../app/ui/spotify-icon';
 import type { Episode } from '../../lib/spotify/types';
 import {
   archiveEpisode,
@@ -69,19 +69,19 @@ export interface EpisodeActionsProps {
   playlist?: ManualPlaylist;
 }
 
-/** Play button plus the "more" menu of an episode row. */
-export function EpisodeActions({
+/** Everything an episode offers besides play: row menus and the card. */
+export function useEpisodeMenuItems({
   episode,
   video,
   playlist,
-}: EpisodeActionsProps) {
+}: EpisodeActionsProps): MenuItem[] {
   const { t } = useTranslation();
   const nowPlayingUri = usePlayer((s) => s.nowPlaying?.uri);
   const setVideo = usePlayer((s) => s.setVideo);
   const inQueue = useIsInQueue(episode.uri);
   const archived = useIsArchived()(episode);
 
-  const items: MenuItem[] = [
+  return [
     {
       label: t('episode.playNext'),
       icon: <ListStart />,
@@ -160,12 +160,18 @@ export function EpisodeActions({
     },
     {
       label: t('podcast.openInSpotify'),
-      icon: <ExternalLink />,
+      icon: <SpotifyIcon />,
       onSelect: () =>
         window.open(episode.external_urls.spotify, '_blank', 'noopener'),
     },
   ];
+}
 
+/** Play button plus the "more" menu of an episode row. */
+export function EpisodeActions(props: EpisodeActionsProps) {
+  const { t } = useTranslation();
+  const { episode } = props;
+  const items = useEpisodeMenuItems(props);
   return (
     <>
       <Menu label={t('episode.more')} icon={<MoreVertical />} items={items} />

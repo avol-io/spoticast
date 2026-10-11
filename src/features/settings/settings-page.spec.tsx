@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import * as update from '../../lib/pwa/update';
 import { useAuth } from '../../lib/spotify/auth';
 import { useSettings } from '../../lib/storage/settings';
@@ -30,7 +31,7 @@ describe('SettingsPage', () => {
   });
 
   it('updates the theme and skip intervals', async () => {
-    render(<SettingsPage />);
+    render(<SettingsPage />, { wrapper: MemoryRouter });
     await userEvent.click(screen.getByRole('radio', { name: 'Light' }));
     expect(useSettings.getState().theme).toBe('light');
 
@@ -45,7 +46,7 @@ describe('SettingsPage', () => {
     useAuth.setState({
       tokens: { accessToken: 'a', refreshToken: 'r', expiresAt: 0, scope: '' },
     });
-    render(<SettingsPage />);
+    render(<SettingsPage />, { wrapper: MemoryRouter });
     await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
     expect(useAuth.getState().tokens).toBeNull();
   });
@@ -74,7 +75,7 @@ describe('SettingsPage', () => {
       },
     });
     const run = vi.spyOn(controller, 'runArchiveSync').mockResolvedValue();
-    render(<SettingsPage />);
+    render(<SettingsPage />, { wrapper: MemoryRouter });
     expect(screen.getByText('2 episodes waiting to sync')).toBeInTheDocument();
     expect(screen.getByText(/1 could not be synced/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Retry now' }));
@@ -86,7 +87,7 @@ describe('SettingsPage', () => {
   it('shows the build and checks for updates', async () => {
     const check = vi.spyOn(update, 'checkForUpdate').mockResolvedValue();
     update.useUpdate.setState({ available: true });
-    render(<SettingsPage />);
+    render(<SettingsPage />, { wrapper: MemoryRouter });
     expect(screen.getByText(new RegExp(__APP_BUILD__.sha))).toBeInTheDocument();
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
     expect(
@@ -101,7 +102,7 @@ describe('SettingsPage', () => {
   it('applies a waiting update', async () => {
     const apply = vi.spyOn(update, 'applyUpdate').mockResolvedValue();
     update.useUpdate.setState({ available: true, needRefresh: true });
-    render(<SettingsPage />);
+    render(<SettingsPage />, { wrapper: MemoryRouter });
     expect(screen.getByText('A new version is ready.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Update' }));
     expect(apply).toHaveBeenCalled();
@@ -112,7 +113,7 @@ describe('SettingsPage', () => {
       beta: true,
       releaseUrl: 'https://example.com/v1.0.0-beta.1',
     });
-    render(<SettingsPage />);
+    render(<SettingsPage />, { wrapper: MemoryRouter });
     // In the mobile header and next to the version.
     expect(screen.getAllByText('Beta')).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Release notes' })).toHaveAttribute(
@@ -127,7 +128,7 @@ describe('SettingsPage', () => {
       needRefresh: true,
       next: { version: 'v2.0.0' },
     });
-    render(<SettingsPage />);
+    render(<SettingsPage />, { wrapper: MemoryRouter });
     expect(screen.getByText('Version v2.0.0 is ready.')).toBeInTheDocument();
   });
 });

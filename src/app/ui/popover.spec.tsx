@@ -31,8 +31,9 @@ describe('Popover', () => {
     const trigger = screen.getByRole('button', { name: 'Open' });
     await userEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('dialog', { name: 'Devices' })).toHaveClass(
-      'bottom-full',
+    expect(screen.getByRole('dialog', { name: 'Devices' })).toHaveAttribute(
+      'data-placement',
+      'top',
     );
     await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

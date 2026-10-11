@@ -55,6 +55,21 @@ describe('SwipeRow', () => {
     expect(onAction).toHaveBeenCalled();
   });
 
+  it('lets the page backdrop show through while at rest', () => {
+    renderRow();
+    const content = screen.getByRole('button', { name: 'Content' })
+      .parentElement?.parentElement as HTMLElement;
+    const actions = screen.getByRole('button', {
+      name: 'Archive',
+      hidden: true,
+    }).parentElement as HTMLElement;
+    expect(content).not.toHaveClass('bg-bg');
+    expect(actions).toHaveClass('invisible');
+    swipe(200, 100);
+    expect(content).toHaveClass('bg-bg');
+    expect(actions).not.toHaveClass('invisible');
+  });
+
   it('ignores vertical moves (scrolling)', () => {
     renderRow();
     const target = screen.getByRole('button', { name: 'Content' });

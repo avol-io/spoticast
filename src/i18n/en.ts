@@ -41,10 +41,7 @@ export const en = {
     app: 'App',
     install: 'Install Spoticast',
     installHint: 'Use it like an app, from your home screen or dock.',
-    installIos: 'On iPhone and iPad: tap Share, then “Add to Home Screen”.',
     installed: 'Spoticast is installed',
-    installUnavailable:
-      'Open Spoticast in Chrome, Edge or Safari to install it.',
     account: 'Account',
     logout: 'Log out',
   },
@@ -64,6 +61,49 @@ export const en = {
     releaseNotes: 'Release notes',
     whatsNew: "What's new",
     stopsPlayback: 'Playback in this browser will stop.',
+  },
+  install: {
+    title: 'Install Spoticast',
+    intro:
+      'Installed, Spoticast opens full screen from your home screen or dock, like any other app, and starts faster.',
+    now: 'Install now',
+    platform: 'Device',
+    ios: 'iPhone & iPad',
+    android: 'Android',
+    desktop: 'Computer',
+    iosOpen:
+      'Open Spoticast in Safari. On iOS 16.4 or later, Chrome and Edge work too.',
+    iosShare:
+      'Tap the Share button. In Safari on iOS 26, tap ··· next to the address first.',
+    iosAdd: 'Scroll down, tap “Add to Home Screen”, then Add.',
+    androidOpen: 'Open Spoticast in Chrome.',
+    androidMenu: 'Tap the ⋮ menu at the top right, then “Install app”.',
+    androidConfirm:
+      'Confirm with Install. If you only see “Add to Home screen”, tap it and choose Install.',
+    androidOther:
+      'Samsung Internet: tap ≡, then “Add page to” › “Home screen”. Firefox: tap ⋮, then “Add to Home screen”.',
+    chromeTitle: 'Chrome and Edge',
+    chromeIcon:
+      'Click the install icon at the right end of the address bar. You also find it in the browser menu, under “Install Spoticast”.',
+    chromeConfirm:
+      'Confirm with Install: Spoticast opens in its own window and joins your apps.',
+    safariTitle: 'Safari on the Mac',
+    safariDock: 'Choose File › Add to Dock (macOS 14 or later), then Add.',
+    firefox:
+      'Firefox on the computer cannot install web apps: open Spoticast in Chrome, Edge or Safari.',
+    banner: 'Install Spoticast',
+    bannerHint: 'Open it from your home screen, like an app.',
+    how: 'Show me',
+    dismiss: 'Not now',
+    labelCopy: 'Copy',
+    labelAddToHome: 'Add to Home Screen',
+    labelNewTab: 'New tab',
+    labelInstallApp: 'Install app',
+    labelSettings: 'Settings',
+    labelInstallPrompt: 'Install app?',
+    labelInstall: 'Install',
+    labelFile: 'File',
+    labelAddToDock: 'Add to Dock…',
   },
   errors: {
     generic: 'Something went wrong. Try again.',
@@ -105,6 +145,7 @@ export const en = {
     ratingsHint: 'Ratings and comments are in the Spotify app.',
     showMore: 'Show more',
     showLess: 'Show less',
+    tabFiltered: 'Filtered',
     tabUnplayed: 'To listen',
     tabArchived: 'Archived',
     episodes_one: '{{count}} episode',
@@ -131,8 +172,18 @@ export const en = {
     removedFromQueue: 'Removed from Up Next',
     explicit: 'Explicit',
     inQueue: 'In Up Next',
+    details: 'Episode details',
+    close: 'Close',
+    notes: 'Details',
+    comments: 'Comments',
+    commentsText:
+      'Spotify doesn’t let other apps read or post comments: you can comment on this episode in the Spotify app.',
+    commentsBack: 'Then please come back here ;-)',
+    commentsOpen: 'Comment on Spotify',
+    goToPodcast: 'Go to the podcast',
   },
   player: {
+    tabEpisode: 'Episode',
     open: 'Open player',
     close: 'Close player',
     play: 'Play',
@@ -145,6 +196,7 @@ export const en = {
     nothingPlaying: 'Nothing playing',
     deviceLabel: 'Playback device: {{name}}',
     chooseDevice: 'Choose a device',
+    changeDevice: 'Change device',
     thisDevice: 'This browser',
     noOtherDevices:
       'No other Spotify devices found. Open Spotify on another device to see it here.',
@@ -269,9 +321,7 @@ export const en = {
     intro:
       'Episodes you pick yourself. They live on Spotify as “Spoticast - <name>”, so every device sees them.',
     new: 'New playlist',
-    empty: 'No playlists yet',
-    emptyHint:
-      'Create a playlist or a smart playlist, then add episodes from their menu.',
+    newMenu: 'Create a playlist',
     name: 'Name',
     namePlaceholder: 'e.g. To listen with Anna',
     create: 'Create',
@@ -298,8 +348,11 @@ export const en = {
   },
   smart: {
     title: 'Smart playlists',
-    intro:
-      'Episodes from across your podcasts, picked by rules, Pocket Casts style.',
+    help: 'What are smart playlists?',
+    helpText:
+      'Smart playlists fill themselves: you set the rules (which podcasts, how long, how recent, listening status) and they always hold the matching episodes of the podcasts you follow.',
+    helpExample:
+      'Example: “Today’s news”. Pick the daily news podcasts you follow and set “Published: 1 day”: every morning you find just today’s episodes, ready to play one after the other.',
     new: 'New smart playlist',
     edit: 'Edit playlist',
     delete: 'Delete playlist',

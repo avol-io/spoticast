@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  ExternalLink,
   ListChecks,
   ListMusic,
   MoreVertical,
@@ -15,6 +14,7 @@ import EmptyState from '../../app/ui/empty-state';
 import IconButton from '../../app/ui/icon-button';
 import Menu from '../../app/ui/menu';
 import PageHeader from '../../app/ui/page-header';
+import SpotifyIcon from '../../app/ui/spotify-icon';
 import { isVideoShow } from '../../lib/episodes';
 import type { Episode } from '../../lib/spotify/types';
 import { toast } from '../../lib/storage/toasts';
@@ -87,7 +87,7 @@ function ManualPlaylistView({ playlist }: { playlist: ManualPlaylist }) {
                   : []),
                 {
                   label: t('podcast.openInSpotify'),
-                  icon: <ExternalLink />,
+                  icon: <SpotifyIcon />,
                   onSelect: () =>
                     window.open(
                       `https://open.spotify.com/playlist/${playlist.id}`,

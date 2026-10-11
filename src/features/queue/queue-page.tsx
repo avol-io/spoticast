@@ -15,7 +15,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  ExternalLink,
   GripVertical,
   ListChecks,
   ListMusic,
@@ -30,6 +29,7 @@ import IconButton from '../../app/ui/icon-button';
 import Menu from '../../app/ui/menu';
 import PageHeader from '../../app/ui/page-header';
 import Sheet from '../../app/ui/sheet';
+import SpotifyIcon from '../../app/ui/spotify-icon';
 import { episodeProgress, formatDuration } from '../../lib/episodes';
 import type { Episode } from '../../lib/spotify/types';
 import { PlayButton } from '../player/episode-actions';
@@ -206,7 +206,7 @@ export function QueuePage() {
                 ? [
                     {
                       label: t('player.switchToSpotify'),
-                      icon: <ExternalLink />,
+                      icon: <SpotifyIcon />,
                       onSelect: () => void switchToSpotify(playlistId),
                     },
                   ]

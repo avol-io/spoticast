@@ -53,9 +53,16 @@ describe('FiltersPage', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it('invites to create the first playlist of either kind', async () => {
+  it('explains smart playlists before the first one, above yours', async () => {
     renderPage();
-    expect(screen.getByText('No playlists yet')).toBeInTheDocument();
+    const headings = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.textContent);
+    expect(headings).toEqual(['Smart playlists', 'Your playlists']);
+    expect(screen.getByText(/Today’s news/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'New playlist' }),
+    ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole('button', { name: 'New smart playlist' }),
     );

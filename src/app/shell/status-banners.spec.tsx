@@ -1,5 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import type { NowPlaying } from '../../features/player/playback';
 import { usePlayer } from '../../features/player/player-store';
 import * as update from '../../lib/pwa/update';
@@ -18,7 +19,7 @@ describe('StatusBanners', () => {
 
   it('shows the offline notice while offline', () => {
     const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
-    render(<StatusBanners />);
+    render(<StatusBanners />, { wrapper: MemoryRouter });
     expect(
       screen.getByText('You are offline: showing saved data.'),
     ).toBeInTheDocument();
@@ -31,7 +32,7 @@ describe('StatusBanners', () => {
 
   it('explains the Premium requirement until dismissed', async () => {
     usePlayer.setState({ sdkError: 'player.premiumRequired' });
-    render(<StatusBanners />);
+    render(<StatusBanners />, { wrapper: MemoryRouter });
     expect(screen.getByText(/needs Spotify Premium/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByText(/needs Spotify Premium/)).not.toBeInTheDocument();
@@ -44,7 +45,7 @@ describe('StatusBanners', () => {
       nowPlaying: { paused: false, deviceId: 'here' } as NowPlaying,
     });
     update.markUpdateReady();
-    render(<StatusBanners />);
+    render(<StatusBanners />, { wrapper: MemoryRouter });
     expect(screen.queryByText(/new version/)).not.toBeInTheDocument();
 
     act(() =>
@@ -59,7 +60,7 @@ describe('StatusBanners', () => {
 
   it('hides the update banner once dismissed', async () => {
     update.markUpdateReady();
-    render(<StatusBanners />);
+    render(<StatusBanners />, { wrapper: MemoryRouter });
     const banner = screen.getByText(/new version/).parentElement as HTMLElement;
     await userEvent.click(
       within(banner).getByRole('button', { name: 'Dismiss' }),
@@ -74,7 +75,7 @@ describe('StatusBanners', () => {
         next: { version: 'v2.0.0', releaseUrl: 'https://example.com/v2.0.0' },
       }),
     );
-    render(<StatusBanners />);
+    render(<StatusBanners />, { wrapper: MemoryRouter });
     expect(
       screen.getByText(/Spoticast v2\.0\.0 is available/),
     ).toBeInTheDocument();

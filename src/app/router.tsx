@@ -73,6 +73,10 @@ export const routes: RouteObject[] = [
         lazy: page(() => import('../features/search/search-page')),
       },
       {
+        path: 'install',
+        lazy: page(() => import('../features/install/install-page')),
+      },
+      {
         path: 'settings',
         lazy: page(() => import('../features/settings/settings-page')),
       },

@@ -7,7 +7,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label={t('appName')}
-      className="pb-safe border-t border-border bg-surface/90 backdrop-blur-md"
+      className="pb-safe border-t border-border bg-surface/80 backdrop-blur-md"
     >
       <ul className="grid grid-cols-5">
         {navItems.map(({ to, icon: Icon, labelKey, end }) => (

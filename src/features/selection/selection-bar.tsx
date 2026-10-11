@@ -67,7 +67,7 @@ export function SelectionBar() {
     <div
       role="toolbar"
       aria-label={t('selection.actions')}
-      className="pb-safe border-t border-border bg-surface/95 px-2 pt-1 backdrop-blur-md lg:mx-auto lg:max-w-6xl lg:rounded-t-2xl lg:border-x lg:px-8"
+      className="pb-safe border-t border-border bg-surface/80 px-2 pt-1 backdrop-blur-md lg:mx-auto lg:max-w-6xl lg:rounded-t-2xl lg:border-x lg:px-8"
     >
       <div className="flex items-center gap-2">
         <IconButton label={t('selection.cancel')} onClick={clear}>

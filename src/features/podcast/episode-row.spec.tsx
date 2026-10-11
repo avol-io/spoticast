@@ -1,6 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render as rtlRender, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
+import {
+  createMemoryRouter,
+  RouterProvider,
+  useLocation,
+} from 'react-router-dom';
 import type { SimplifiedEpisode } from '../../lib/spotify/types';
+import { episodeKey } from '../episode/open-episode';
 
 import EpisodeRow from './episode-row';
 
@@ -13,6 +21,32 @@ const base = {
   explicit: false,
   images: [],
 } as unknown as SimplifiedEpisode;
+
+let queryClient: QueryClient;
+
+function Search() {
+  return <output>{useLocation().search}</output>;
+}
+
+function render(ui: ReactElement) {
+  queryClient = new QueryClient();
+  const router = createMemoryRouter([
+    {
+      path: '/',
+      element: (
+        <>
+          {ui}
+          <Search />
+        </>
+      ),
+    },
+  ]);
+  return rtlRender(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
 
 describe('EpisodeRow', () => {
   it('shows the duration of an unplayed episode', () => {
@@ -39,7 +73,7 @@ describe('EpisodeRow', () => {
     );
   });
 
-  it('marks played episodes and expands the description', async () => {
+  it('marks played episodes and opens the episode card', async () => {
     render(
       <EpisodeRow
         episode={{
@@ -50,6 +84,9 @@ describe('EpisodeRow', () => {
     );
     expect(screen.getByText('Played')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /the episode/i }));
-    expect(screen.getByText('Long description')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('?episode=e1');
+    expect(queryClient.getQueryData(episodeKey('e1'))).toMatchObject({
+      name: 'The episode',
+    });
   });
 });

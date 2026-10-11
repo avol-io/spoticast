@@ -43,11 +43,7 @@ export const it: Dictionary = {
     app: 'App',
     install: 'Installa Spoticast',
     installHint: "Usala come un'app, dalla schermata Home o dal dock.",
-    installIos:
-      'Su iPhone e iPad: tocca Condividi e poi “Aggiungi alla schermata Home”.',
     installed: 'Spoticast è installata',
-    installUnavailable:
-      'Apri Spoticast in Chrome, Edge o Safari per installarla.',
     account: 'Account',
     logout: 'Esci',
   },
@@ -67,6 +63,51 @@ export const it: Dictionary = {
     releaseNotes: 'Note di rilascio',
     whatsNew: 'Novità',
     stopsPlayback: 'La riproduzione in questo browser si fermerà.',
+  },
+  install: {
+    title: 'Installa Spoticast',
+    intro:
+      'Installato, Spoticast si apre a tutto schermo dalla schermata Home o dal Dock, come le altre app, e parte più in fretta.',
+    now: 'Installa ora',
+    platform: 'Dispositivo',
+    ios: 'iPhone e iPad',
+    android: 'Android',
+    desktop: 'Computer',
+    iosOpen:
+      'Apri Spoticast in Safari. Da iOS 16.4 funzionano anche Chrome ed Edge.',
+    iosShare:
+      'Tocca il pulsante Condividi. In Safari su iOS 26 tocca prima ··· accanto all’indirizzo.',
+    iosAdd:
+      'Scorri in basso, tocca “Aggiungi alla schermata Home”, poi Aggiungi.',
+    androidOpen: 'Apri Spoticast in Chrome.',
+    androidMenu: 'Tocca il menu ⋮ in alto a destra, poi “Installa app”.',
+    androidConfirm:
+      'Conferma con Installa. Se vedi solo “Aggiungi a schermata Home”, toccalo e scegli Installa.',
+    androidOther:
+      'Samsung Internet: tocca ≡, poi “Aggiungi pagina a” › “Schermata Home”. Firefox: tocca ⋮, poi “Aggiungi a schermata Home”.',
+    chromeTitle: 'Chrome ed Edge',
+    chromeIcon:
+      'Clicca l’icona di installazione in fondo a destra nella barra degli indirizzi. La trovi anche nel menu del browser, alla voce “Installa Spoticast”.',
+    chromeConfirm:
+      'Conferma con Installa: Spoticast si apre nella sua finestra e si aggiunge alle tue app.',
+    safariTitle: 'Safari sul Mac',
+    safariDock:
+      'Scegli Archivio › Aggiungi al Dock (da macOS 14), poi Aggiungi.',
+    firefox:
+      'Firefox sul computer non installa le web app: apri Spoticast in Chrome, Edge o Safari.',
+    banner: 'Installa Spoticast',
+    bannerHint: 'Aprila dalla schermata Home, come un’app.',
+    how: 'Scopri come',
+    dismiss: 'Non ora',
+    labelCopy: 'Copia',
+    labelAddToHome: 'Aggiungi alla schermata Home',
+    labelNewTab: 'Nuova scheda',
+    labelInstallApp: 'Installa app',
+    labelSettings: 'Impostazioni',
+    labelInstallPrompt: 'Installare l’app?',
+    labelInstall: 'Installa',
+    labelFile: 'Archivio',
+    labelAddToDock: 'Aggiungi al Dock…',
   },
   errors: {
     generic: 'Qualcosa è andato storto. Riprova.',
@@ -109,6 +150,7 @@ export const it: Dictionary = {
     ratingsHint: "Voti e commenti sono nell'app Spotify.",
     showMore: 'Mostra di più',
     showLess: 'Mostra meno',
+    tabFiltered: 'Filtrati',
     tabUnplayed: 'Da ascoltare',
     tabArchived: 'Archiviati',
     episodes_one: '{{count}} episodio',
@@ -136,8 +178,18 @@ export const it: Dictionary = {
     removedFromQueue: 'Tolto dalla coda',
     explicit: 'Esplicito',
     inQueue: 'In coda',
+    details: 'Dettagli episodio',
+    close: 'Chiudi',
+    notes: 'Dettagli',
+    comments: 'Commenti',
+    commentsText:
+      'Spotify non permette alle altre app di leggere o scrivere i commenti: puoi commentare questa puntata nell’app Spotify.',
+    commentsBack: 'Poi mi raccomando, torna qui ;-)',
+    commentsOpen: 'Commenta su Spotify',
+    goToPodcast: 'Vai al podcast',
   },
   player: {
+    tabEpisode: 'Episodio',
     open: 'Apri il player',
     close: 'Chiudi il player',
     play: 'Riproduci',
@@ -150,6 +202,7 @@ export const it: Dictionary = {
     nothingPlaying: 'Niente in riproduzione',
     deviceLabel: 'Dispositivo di riproduzione: {{name}}',
     chooseDevice: 'Scegli un dispositivo',
+    changeDevice: 'Cambia dispositivo',
     thisDevice: 'Questo browser',
     noOtherDevices:
       'Nessun altro dispositivo Spotify trovato. Apri Spotify su un altro dispositivo per vederlo qui.',
@@ -276,9 +329,7 @@ export const it: Dictionary = {
     intro:
       'Episodi scelti da te. Stanno su Spotify come “Spoticast - <nome>”, quindi le vedi su ogni dispositivo.',
     new: 'Nuova playlist',
-    empty: 'Nessuna playlist',
-    emptyHint:
-      'Crea una playlist o una playlist smart, poi aggiungi gli episodi dal loro menu.',
+    newMenu: 'Crea una playlist',
     name: 'Nome',
     namePlaceholder: 'Es. Da ascoltare con Anna',
     create: 'Crea',
@@ -305,8 +356,11 @@ export const it: Dictionary = {
   },
   smart: {
     title: 'Playlist smart',
-    intro:
-      'Episodi presi da tutti i tuoi podcast in base a delle regole, come in Pocket Casts.',
+    help: 'Cosa sono le playlist smart?',
+    helpText:
+      'Le playlist smart si riempiono da sole: scegli le regole (quali podcast, durata, quanto recenti, stato di ascolto) e contengono sempre gli episodi dei podcast che segui che le rispettano.',
+    helpExample:
+      'Esempio: “Notizie di oggi”. Scegli i podcast di notizie quotidiane che segui e imposta “Pubblicati: 1 giorno”: ogni mattina trovi solo le puntate di oggi, pronte da ascoltare una dopo l’altra.',
     new: 'Nuova playlist smart',
     edit: 'Modifica playlist',
     delete: 'Elimina playlist',

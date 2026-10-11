@@ -5,6 +5,8 @@ import {
   selectPlayingHere,
   usePlayer,
 } from '../../features/player/player-store';
+import InstallBanner from '../../features/install/install-banner';
+import { bannerCardClass } from '../ui/banner';
 import { applyUpdate, dismissUpdate, useUpdate } from '../../lib/pwa/update';
 
 function subscribeOnline(callback: () => void) {
@@ -37,6 +39,8 @@ function readDismissed() {
 /**
  * Offline notice, the "Premium required" notice of the browser player and the
  * "new version" prompt (held back while audio plays here: updating reloads).
+ * They sit right above the mini player, like the toasts, with the invite to
+ * install the app.
  */
 export function StatusBanners() {
   const { t } = useTranslation();
@@ -50,21 +54,19 @@ export function StatusBanners() {
   const [dismissed, setDismissed] = useState(readDismissed);
 
   return (
-    <div className="pt-safe sticky top-0 z-40 empty:hidden">
+    // Children carry their own bottom margin: a hidden one adds no gap.
+    <div className="pointer-events-none flex flex-col items-center px-4">
       {!online && (
         <p
           role="status"
-          className="flex items-center justify-center gap-2 bg-surface-3 px-4 py-1.5 text-xs font-medium"
+          className="pointer-events-auto mb-2 flex items-center gap-2 rounded-full bg-surface-3/80 px-3 py-1 text-xs font-medium shadow-lg ring-1 ring-black/10 backdrop-blur-md"
         >
           <CloudOff className="size-3.5" aria-hidden />
           {t('errors.offline')}
         </p>
       )}
       {showUpdate && !playingHere && (
-        <div
-          role="status"
-          className="flex items-center gap-3 bg-surface-3 px-4 py-2 text-xs text-fg"
-        >
+        <div role="status" className={bannerCardClass}>
           <RefreshCw className="size-3.5 shrink-0" aria-hidden />
           <p className="flex-1">
             {next
@@ -101,11 +103,10 @@ export function StatusBanners() {
           </button>
         </div>
       )}
+      {/* From lg the invite sits at the sidebar foot. */}
+      <InstallBanner className="lg:hidden" />
       {premiumMissing && !dismissed && (
-        <div
-          role="status"
-          className="flex items-center gap-3 bg-brand/15 px-4 py-2 text-xs text-fg"
-        >
+        <div role="status" className={bannerCardClass}>
           <p className="flex-1">{t('player.premiumBanner')}</p>
           <button
             type="button"

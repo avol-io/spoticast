@@ -1,14 +1,7 @@
-import {
-  ListMusic,
-  Play,
-  Plus,
-  SlidersHorizontal,
-  Sparkles,
-} from 'lucide-react';
+import { ListMusic, Play, Plus, Sparkles } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import EmptyState from '../../app/ui/empty-state';
 import Menu from '../../app/ui/menu';
 import PageHeader from '../../app/ui/page-header';
 import { useFilters, type SmartList } from '../../lib/storage/filters';
@@ -21,6 +14,7 @@ import {
   type ManualPlaylist,
 } from './manual-playlists';
 import PlaylistNameSheet from './playlist-name-sheet';
+import SmartHelp, { SmartHelpText } from './smart-help';
 import SmartListEditor, { newSmartList } from './smart-list-editor';
 import { useSmartListEpisodes } from './smart-lists';
 
@@ -110,17 +104,23 @@ function ManualPlaylistCard({ playlist }: { playlist: ManualPlaylist }) {
 function Section({
   title,
   intro,
+  help,
   children,
 }: {
   title: string;
-  intro: string;
+  intro?: string;
+  /** Rendered next to the title (a help button). */
+  help?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="flex flex-col gap-3">
       <div>
-        <h2 className="text-lg font-bold">{title}</h2>
-        <p className="text-sm text-fg-muted">{intro}</p>
+        <div className="flex items-center gap-1">
+          <h2 className="text-lg font-bold">{title}</h2>
+          {help}
+        </div>
+        {intro && <p className="text-sm text-fg-muted">{intro}</p>}
       </div>
       {children}
     </section>
@@ -130,7 +130,7 @@ function Section({
 const newButtonClass =
   'flex items-center gap-1.5 self-start rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-fg';
 
-/** Manual playlists and smart playlists. */
+/** Smart playlists, then manual playlists. */
 export function FiltersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -160,80 +160,64 @@ export function FiltersPage() {
       {t('smart.new')}
     </button>
   );
-  const empty =
-    !manual.isPending && playlists.length === 0 && smartLists.length === 0;
-
   return (
     <>
       <PageHeader
         title={t('nav.playlists')}
         actions={
-          !empty && (
-            <Menu
-              label={t('playlists.new')}
-              icon={<Plus />}
-              items={[
-                {
-                  label: t('playlists.new'),
-                  icon: <ListMusic />,
-                  onSelect: () => setNaming(true),
-                },
-                {
-                  label: t('smart.new'),
-                  icon: <Sparkles />,
-                  onSelect: () => setEditing(newSmartList()),
-                },
-              ]}
-            />
-          )
+          <Menu
+            label={t('playlists.newMenu')}
+            icon={<Plus />}
+            items={[
+              {
+                label: t('playlists.new'),
+                icon: <ListMusic />,
+                onSelect: () => setNaming(true),
+              },
+              {
+                label: t('smart.new'),
+                icon: <Sparkles />,
+                onSelect: () => setEditing(newSmartList()),
+              },
+            ]}
+          />
         }
       />
       <div className="mx-auto max-w-6xl px-4 pb-6 lg:px-8">
         <div className="max-w-3xl">
-          {empty ? (
-            <EmptyState
-              icon={<SlidersHorizontal />}
-              title={t('playlists.empty')}
-              description={t('playlists.emptyHint')}
-              action={
-                <div className="flex flex-wrap justify-center gap-2">
-                  {newPlaylist}
+          <div className="flex flex-col gap-8">
+            <Section title={t('smart.title')} help={<SmartHelp />}>
+              {smartLists.length === 0 ? (
+                <div className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
+                  <SmartHelpText />
                   {newSmart}
                 </div>
-              }
-            />
-          ) : (
-            <div className="flex flex-col gap-8">
-              <Section title={t('playlists.mine')} intro={t('playlists.intro')}>
-                {manual.isPending ? (
-                  <p className="text-sm text-fg-muted">…</p>
-                ) : playlists.length === 0 ? (
-                  newPlaylist
-                ) : (
-                  <ul className="flex flex-col gap-2">
-                    {playlists.map((playlist) => (
-                      <li key={playlist.id}>
-                        <ManualPlaylistCard playlist={playlist} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Section>
-              <Section title={t('smart.title')} intro={t('smart.intro')}>
-                {smartLists.length === 0 ? (
-                  newSmart
-                ) : (
-                  <ul className="flex flex-col gap-2">
-                    {smartLists.map((list) => (
-                      <li key={list.id}>
-                        <SmartListCard list={list} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Section>
-            </div>
-          )}
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {smartLists.map((list) => (
+                    <li key={list.id}>
+                      <SmartListCard list={list} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
+            <Section title={t('playlists.mine')} intro={t('playlists.intro')}>
+              {manual.isPending ? (
+                <p className="text-sm text-fg-muted">…</p>
+              ) : playlists.length === 0 ? (
+                newPlaylist
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {playlists.map((playlist) => (
+                    <li key={playlist.id}>
+                      <ManualPlaylistCard playlist={playlist} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
+          </div>
         </div>
       </div>
       <SmartListEditor

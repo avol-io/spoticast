@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 export interface SheetProps {
@@ -6,10 +6,22 @@ export interface SheetProps {
   onClose: () => void;
   label: string;
   children: ReactNode;
-  /** bottom: sheet on mobile, centered dialog on desktop. full: covers the screen. */
-  variant?: 'bottom' | 'full';
+  /**
+   * bottom: sheet on mobile, centered dialog on desktop. card: a centered
+   * card on every screen. full: covers the screen.
+   */
+  variant?: 'bottom' | 'card' | 'full';
   className?: string;
+  /** Inline styles of the panel (e.g. a view transition name). */
+  style?: CSSProperties;
 }
+
+const panelClasses = {
+  bottom:
+    'pb-safe max-h-[85dvh] w-full overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-2xl lg:max-w-lg lg:rounded-3xl',
+  card: 'max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-full max-w-lg overflow-y-auto rounded-3xl bg-surface shadow-2xl',
+  full: 'size-full overflow-y-auto bg-bg',
+};
 
 /** Modal overlay rendered in a portal; closes on Escape and backdrop click. */
 export function Sheet({
@@ -19,6 +31,7 @@ export function Sheet({
   children,
   variant = 'bottom',
   className = '',
+  style,
 }: SheetProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -61,8 +74,14 @@ export function Sheet({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
-      {variant === 'bottom' && (
+    <div
+      className={`fixed inset-0 z-50 flex justify-center ${
+        variant === 'card'
+          ? 'items-center px-3 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]'
+          : 'items-end lg:items-center'
+      }`}
+    >
+      {variant !== 'full' && (
         <div
           aria-hidden
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -75,11 +94,8 @@ export function Sheet({
         aria-modal="true"
         aria-label={label}
         tabIndex={-1}
-        className={`relative outline-none ${
-          variant === 'full'
-            ? 'size-full overflow-y-auto bg-bg'
-            : 'pb-safe max-h-[85dvh] w-full overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-2xl lg:max-w-lg lg:rounded-3xl'
-        } ${className}`}
+        style={style}
+        className={`relative outline-none ${panelClasses[variant]} ${className}`}
       >
         {children}
       </div>

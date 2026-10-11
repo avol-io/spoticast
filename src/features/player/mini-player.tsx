@@ -1,26 +1,32 @@
 import { ListMusic, Pause, Play, RotateCcw, RotateCw } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import IconButton from '../../app/ui/icon-button';
 import { useDominantColor } from '../../lib/color/dominant';
 import { episodeProgress, pickImage } from '../../lib/episodes';
 import { useSettings } from '../../lib/storage/settings';
 import { useQueue } from '../queue/queue';
 import DevicePicker from './device-picker';
+import { COVER_TRANSITION, openFullPlayer } from './full-player-open';
 import { skip, togglePlay } from './player-controller';
 import { usePlayer } from './player-store';
 import { usePlaybackPosition } from './use-position';
 
-function Cover({ image }: { image?: string }) {
+function Cover({ image, named }: { image?: string; named?: boolean }) {
+  // Morphs into the full player cover (never both named at once).
+  const style = named ? { viewTransitionName: COVER_TRANSITION } : undefined;
   return image ? (
     <img
       src={image}
       alt=""
+      style={style}
       className="size-11 shrink-0 rounded-lg object-cover shadow lg:size-12"
     />
   ) : (
-    <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-surface-3 text-fg-muted lg:size-12">
+    <div
+      style={style}
+      className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-surface-3 text-fg-muted lg:size-12"
+    >
       <ListMusic className="size-5" aria-hidden />
     </div>
   );
@@ -37,12 +43,12 @@ function Titles({ title, subtitle }: { title: string; subtitle: string }) {
 
 /**
  * Always visible: what is playing, else the head of Up Next ready to play,
- * else an empty bar. The device picker opens upwards from it.
+ * else an empty bar. Tapping either opens the full player. The device picker opens upwards from it.
  */
 export function MiniPlayer() {
   const { t } = useTranslation();
   const np = usePlayer((s) => s.nowPlaying);
-  const setFullPlayerOpen = usePlayer((s) => s.setFullPlayerOpen);
+  const fullPlayerOpen = usePlayer((s) => s.fullPlayerOpen);
   const { skipBackSeconds, skipForwardSeconds } = useSettings();
   const position = usePlaybackPosition();
   const queue = useQueue();
@@ -64,12 +70,8 @@ export function MiniPlayer() {
   let info: ReactNode;
   if (np) {
     info = (
-      <button
-        type="button"
-        onClick={() => setFullPlayerOpen(true)}
-        className={rowClass}
-      >
-        <Cover image={np.image} />
+      <button type="button" onClick={openFullPlayer} className={rowClass}>
+        <Cover image={np.image} named={!fullPlayerOpen} />
         <span className="sr-only">{t('player.open')}: </span>
         <Titles
           title={np.name}
@@ -83,13 +85,14 @@ export function MiniPlayer() {
     );
   } else if (head) {
     info = (
-      <Link to="/queue" className={rowClass}>
-        <Cover image={image} />
+      <button type="button" onClick={openFullPlayer} className={rowClass}>
+        <Cover image={image} named={!fullPlayerOpen} />
+        <span className="sr-only">{t('player.open')}: </span>
         <Titles
           title={head.name}
           subtitle={`${t('player.upNext')} · ${head.show.name}`}
         />
-      </Link>
+      </button>
     );
   } else {
     info = (
@@ -105,11 +108,12 @@ export function MiniPlayer() {
   return (
     <div
       style={accent ? ({ '--accent': accent } as CSSProperties) : undefined}
-      className="mx-2 mb-2 rounded-2xl bg-[color-mix(in_oklab,var(--accent)_22%,var(--surface-2))] shadow-2xl ring-1 ring-black/10 backdrop-blur-md lg:mx-0 lg:mb-0 lg:rounded-none lg:border-t lg:border-border"
+      className="bg-player relative mx-2 mb-2 rounded-2xl shadow-2xl ring-1 ring-black/10 backdrop-blur-md lg:mx-0 lg:mb-0 lg:rounded-none lg:border-t lg:border-border"
     >
-      <div className="h-0.5 overflow-hidden rounded-t-2xl bg-black/20 lg:rounded-none">
+      {/* Inset by the corner radius, so it sits on the straight top edge. */}
+      <div className="absolute inset-x-4 top-0 h-[3px] overflow-hidden rounded-full bg-black/20 lg:inset-x-0 lg:h-0.5 lg:rounded-none">
         <div
-          className="h-full bg-accent transition-[width] duration-500"
+          className="h-full rounded-full bg-accent transition-[width] duration-500 lg:rounded-none"
           style={{ width: `${progress}%` }}
         />
       </div>

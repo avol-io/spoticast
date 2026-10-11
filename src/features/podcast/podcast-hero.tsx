@@ -1,15 +1,9 @@
-import {
-  ArrowLeft,
-  Check,
-  ExternalLink,
-  Plus,
-  Share2,
-  Video,
-} from 'lucide-react';
+import { ArrowLeft, Check, Plus, Share2, Video } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import IconButton from '../../app/ui/icon-button';
+import SpotifyIcon from '../../app/ui/spotify-icon';
 import { isVideoShow } from '../../lib/episodes';
 import type { SimplifiedShow } from '../../lib/spotify/types';
 import { toast } from '../../lib/storage/toasts';
@@ -123,7 +117,7 @@ export function PodcastHero({ show }: PodcastHeroProps) {
           title={`${t('podcast.openInSpotify')} — ${t('podcast.ratingsHint')}`}
           className="inline-flex size-10 items-center justify-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg"
         >
-          <ExternalLink className="size-5" />
+          <SpotifyIcon className="size-5" />
         </a>
       </div>
 

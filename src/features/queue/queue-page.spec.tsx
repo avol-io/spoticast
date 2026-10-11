@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { queryClient } from '../../lib/query/query-client';
 import { usePlayer } from '../player/player-store';
 import { useSelection } from '../selection/selection-store';
@@ -21,7 +22,9 @@ const ep = (id: string, minutes: number) => ({
 function renderQueue() {
   render(
     <QueryClientProvider client={queryClient}>
-      <QueuePage />
+      <MemoryRouter>
+        <QueuePage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }

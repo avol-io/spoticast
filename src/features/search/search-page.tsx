@@ -50,7 +50,7 @@ export function SearchPage() {
 
   return (
     <>
-      <header className="pt-safe sticky top-0 z-20 bg-bg/85 backdrop-blur-md">
+      <header className="pt-safe sticky top-0 z-20 bg-bg/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pt-3 pb-3 lg:px-8 lg:pt-5">
           <div className="flex items-center gap-2.5">
             <AppMark />
