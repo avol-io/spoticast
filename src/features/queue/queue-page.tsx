@@ -18,6 +18,7 @@ import {
   ExternalLink,
   GripVertical,
   ListMusic,
+  ListX,
   MoreVertical,
   RefreshCw,
   X,
@@ -28,13 +29,14 @@ import EmptyState from '../../app/ui/empty-state';
 import IconButton from '../../app/ui/icon-button';
 import Menu from '../../app/ui/menu';
 import PageHeader from '../../app/ui/page-header';
+import Sheet from '../../app/ui/sheet';
 import { episodeProgress, formatDuration } from '../../lib/episodes';
 import type { Episode } from '../../lib/spotify/types';
 import { PlayButton } from '../player/episode-actions';
 import { switchToSpotify } from '../player/player-controller';
 import { usePlayer } from '../player/player-store';
 import EpisodeRow from '../podcast/episode-row';
-import { moveInQueue, removeFromQueue, useQueue } from './queue';
+import { clearQueue, moveInQueue, removeFromQueue, useQueue } from './queue';
 import { useQueueStore } from './queue-store';
 import SyncDialog from './sync-dialog';
 import { useErrorText } from '../../lib/spotify/errors';
@@ -97,6 +99,42 @@ function QueueItem({
   );
 }
 
+/** Confirms emptying Up Next (nothing gets archived). */
+function ClearDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Sheet open={open} onClose={onClose} label={t('queue.clearQueue')}>
+      <h2 className="text-lg font-bold">{t('queue.clearQueue')}</h2>
+      <p className="mt-1 text-sm text-fg-muted">{t('queue.clearConfirm')}</p>
+      <div className="mt-6 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full px-4 py-2 font-semibold text-fg-muted hover:bg-surface-2"
+        >
+          {t('queue.cancel')}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            void clearQueue().catch(() => undefined);
+          }}
+          className="rounded-full bg-danger px-5 py-2 font-semibold text-danger-fg"
+        >
+          {t('queue.clearQueue')}
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
 export function QueuePage() {
   const errorText = useErrorText();
   const { t, i18n } = useTranslation();
@@ -104,6 +142,7 @@ export function QueuePage() {
   const nowPlayingUri = usePlayer((s) => s.nowPlaying?.uri);
   const playlistId = useQueueStore((s) => s.playlistId);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -140,6 +179,16 @@ export function QueuePage() {
                 icon: <RefreshCw />,
                 onSelect: () => setSyncOpen(true),
               },
+              ...(episodes.length > 0
+                ? [
+                    {
+                      label: t('queue.clearQueue'),
+                      icon: <ListX />,
+                      danger: true,
+                      onSelect: () => setClearOpen(true),
+                    },
+                  ]
+                : []),
               ...(playlistId
                 ? [
                     {
@@ -217,6 +266,7 @@ export function QueuePage() {
         </div>
       </div>
       <SyncDialog open={syncOpen} onClose={() => setSyncOpen(false)} />
+      <ClearDialog open={clearOpen} onClose={() => setClearOpen(false)} />
     </>
   );
 }

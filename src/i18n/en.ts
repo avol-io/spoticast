@@ -167,6 +167,11 @@ export const en = {
     dismiss: 'Dismiss',
   },
   queue: {
+    clearQueue: 'Clear Up Next',
+    clearConfirm: 'Remove every episode from Up Next? They are not archived.',
+    cleared: 'Up Next cleared',
+    removedMany_one: '{{count}} episode removed from Up Next',
+    removedMany_other: '{{count}} episodes removed from Up Next',
     empty: 'Up Next is empty',
     emptyHint: 'Add episodes with “Play next” or “Play last”.',
     summary_one: '{{count}} episode · {{time}}',

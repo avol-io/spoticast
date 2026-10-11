@@ -5,13 +5,17 @@ import {
   addToQueue,
   ensureQueuePlaylist,
   moveInQueue,
+  clearQueue,
+  insertIntoQueue,
   moveToHead,
   prependToQueue,
+  removeManyFromQueue,
   queueKey,
   removeFromQueue,
   resetQueuePlaylistCache,
   type QueueData,
 } from './queue';
+import { useArchiveStore } from '../archive/archive-store';
 import { useQueueStore } from './queue-store';
 
 const ep = (id: string) =>
@@ -77,6 +81,52 @@ describe('queue', () => {
       0,
     );
     expect(uris()).toEqual(['x', 'c', 'a', 'b']);
+  });
+
+  it('inserts a batch after the playing head or at the end', async () => {
+    vi.spyOn(endpoints, 'removePlaylistItems').mockResolvedValue({
+      snapshot_id: 's',
+    });
+    const add = vi
+      .spyOn(endpoints, 'addPlaylistItems')
+      .mockResolvedValue({ snapshot_id: 's' });
+    await insertIntoQueue([ep('x'), ep('y')], 'next', 'spotify:episode:a');
+    expect(add).toHaveBeenLastCalledWith(
+      'pl',
+      ['spotify:episode:x', 'spotify:episode:y'],
+      1,
+    );
+    expect(uris()).toEqual(['a', 'x', 'y', 'b', 'c']);
+    await insertIntoQueue([ep('a'), ep('z')], 'last');
+    expect(add).toHaveBeenLastCalledWith(
+      'pl',
+      ['spotify:episode:a', 'spotify:episode:z'],
+      4,
+    );
+    expect(uris()).toEqual(['x', 'y', 'b', 'c', 'a', 'z']);
+  });
+
+  it('removes several episodes in one write', async () => {
+    const remove = vi
+      .spyOn(endpoints, 'removePlaylistItems')
+      .mockResolvedValue({ snapshot_id: 's' });
+    await removeManyFromQueue(['spotify:episode:a', 'spotify:episode:q']);
+    expect(remove).toHaveBeenCalledWith('pl', ['spotify:episode:a']);
+    expect(uris()).toEqual(['b', 'c']);
+  });
+
+  it('clears every episode without archiving', async () => {
+    const remove = vi
+      .spyOn(endpoints, 'removePlaylistItems')
+      .mockResolvedValue({ snapshot_id: 's' });
+    await clearQueue();
+    expect(remove).toHaveBeenCalledWith('pl', [
+      'spotify:episode:a',
+      'spotify:episode:b',
+      'spotify:episode:c',
+    ]);
+    expect(uris()).toEqual([]);
+    expect(useArchiveStore.getState().pending).toEqual({});
   });
 
   it('runs writes in order', async () => {

@@ -184,24 +184,55 @@ export function moveToHead(episode: Episode) {
   return serial(() => placeAt(episode, 0));
 }
 
-/** Puts `episodes` at the head of Up Next, in order, without duplicates. */
-export function prependToQueue(episodes: Episode[]) {
+export type QueuePlace = 'head' | 'next' | 'last';
+
+/**
+ * Inserts `episodes` in order, moving the ones already queued: at the head,
+ * after the playing head ("Play next") or at the end. Two writes at most.
+ */
+export function insertIntoQueue(
+  episodes: Episode[],
+  where: QueuePlace,
+  nowPlayingUri?: string,
+) {
   return serial(async () => {
-    const head = [...new Map(episodes.map((ep) => [ep.uri, ep])).values()];
-    const uris = new Set(head.map((ep) => ep.uri));
+    const batch = [...new Map(episodes.map((ep) => [ep.uri, ep])).values()];
+    if (batch.length === 0) return;
+    const uris = new Set(batch.map((ep) => ep.uri));
     const { episodes: queued } = await currentQueue();
     const duplicates = queued
       .filter((ep) => uris.has(ep.uri))
       .map((ep) => ep.uri);
+    const rest = queued.filter((ep) => !uris.has(ep.uri));
+    const position =
+      where === 'head'
+        ? 0
+        : where === 'next'
+          ? playNextPosition(
+              rest.map((ep) => ep.uri),
+              nowPlayingUri,
+            )
+          : rest.length;
     await mutate(
-      (list) => [...head, ...list.filter((ep) => !uris.has(ep.uri))],
+      (list) => {
+        const others = list.filter((ep) => !uris.has(ep.uri));
+        return [
+          ...others.slice(0, position),
+          ...batch,
+          ...others.slice(position),
+        ];
+      },
       async (id) => {
         if (duplicates.length) await removePlaylistItems(id, duplicates);
-        await addPlaylistItems(id, [...uris], 0);
+        await addPlaylistItems(id, [...uris], position);
       },
     );
   });
 }
+
+/** Puts `episodes` at the head of Up Next, in order, without duplicates. */
+export const prependToQueue = (episodes: Episode[]) =>
+  insertIntoQueue(episodes, 'head');
 
 export function removeFromQueue(uri: string, { silent = false } = {}) {
   return serial(async () => {
@@ -213,6 +244,38 @@ export function removeFromQueue(uri: string, { silent = false } = {}) {
     );
     if (!silent) toast(i18n.t('episode.removedFromQueue'));
   });
+}
+
+/** Removes several episodes in one write (missing ones are ignored). */
+export function removeManyFromQueue(uris: string[], { silent = false } = {}) {
+  return serial(async () => {
+    const { episodes } = await currentQueue();
+    const drop = new Set(uris);
+    const present = episodes.filter((ep) => drop.has(ep.uri));
+    if (present.length === 0) return;
+    await mutate(
+      (list) => list.filter((ep) => !drop.has(ep.uri)),
+      (id) =>
+        removePlaylistItems(
+          id,
+          present.map((ep) => ep.uri),
+        ),
+    );
+    if (!silent) toast(i18n.t('queue.removedMany', { count: present.length }));
+  });
+}
+
+/**
+ * Empties Up Next, the playing episode included; nothing gets archived and
+ * songs added from other apps stay.
+ */
+export async function clearQueue() {
+  const { episodes } = await currentQueue();
+  await removeManyFromQueue(
+    episodes.map((ep) => ep.uri),
+    { silent: true },
+  );
+  toast(i18n.t('queue.cleared'));
 }
 
 export function moveInQueue(from: number, to: number) {

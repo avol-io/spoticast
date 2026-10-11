@@ -172,6 +172,12 @@ export const it: Dictionary = {
     dismiss: 'Chiudi',
   },
   queue: {
+    clearQueue: 'Svuota la coda',
+    clearConfirm:
+      'Togliere tutti gli episodi dalla coda? Non vengono archiviati.',
+    cleared: 'Coda svuotata',
+    removedMany_one: '{{count}} episodio tolto dalla coda',
+    removedMany_other: '{{count}} episodi tolti dalla coda',
     empty: 'La coda è vuota',
     emptyHint: 'Aggiungi episodi con “Riproduci dopo” o “Aggiungi in fondo”.',
     summary_one: '{{count}} episodio · {{time}}',

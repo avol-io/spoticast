@@ -58,6 +58,26 @@ describe('QueuePage', () => {
     expect(remove).toHaveBeenCalledWith('spotify:episode:a');
   });
 
+  it('clears Up Next after confirming', async () => {
+    queryClient.setQueryData(queue.queueKey, {
+      episodes: [ep('a', 30), ep('b', 45)],
+      otherCount: 0,
+    });
+    const clear = vi.spyOn(queue, 'clearQueue').mockResolvedValue();
+    renderQueue();
+    await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: 'Clear Up Next' }),
+    );
+    expect(clear).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Clear Up Next',
+      }),
+    );
+    expect(clear).toHaveBeenCalled();
+  });
+
   it('shows the empty state', () => {
     queryClient.setQueryData(queue.queueKey, { episodes: [], otherCount: 0 });
     renderQueue();
