@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
 import EmptyState from '../../app/ui/empty-state';
+import { useDocumentTitle } from '../../app/hooks/use-document-title';
 import { isVideoShow, pickImage } from '../../lib/episodes';
 import { useDominantColor } from '../../lib/color/dominant';
 import { useIsArchived } from '../archive/use-archive';
@@ -59,6 +60,7 @@ export function PodcastPage() {
   const episodesQuery = useShowEpisodes(showId);
   const isArchived = useIsArchived();
   const accent = useDominantColor(pickImage(show.data?.images, 300));
+  useDocumentTitle(show.data?.name);
 
   const criteria = useFilters((s) => s.podcast[showId]) ?? emptyCriteria;
   const setPodcastFilter = useFilters((s) => s.setPodcastFilter);

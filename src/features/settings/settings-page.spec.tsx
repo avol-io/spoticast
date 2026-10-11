@@ -19,6 +19,8 @@ vi.mock('../../lib/build-info', () => ({
   get IS_BETA() {
     return build.beta;
   },
+  LOGO_URL: '/logo.svg',
+  APP_TITLE: 'Spoticast',
 }));
 
 describe('SettingsPage', () => {
@@ -109,7 +111,8 @@ describe('SettingsPage', () => {
       releaseUrl: 'https://example.com/v1.0.0-beta.1',
     });
     render(<SettingsPage />);
-    expect(screen.getByText('Beta')).toBeInTheDocument();
+    // In the mobile header and next to the version.
+    expect(screen.getAllByText('Beta')).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Release notes' })).toHaveAttribute(
       'href',
       'https://example.com/v1.0.0-beta.1',

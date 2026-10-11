@@ -2,6 +2,8 @@ import { Clock, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { useDocumentTitle } from '../../app/hooks/use-document-title';
+import AppMark from '../../app/ui/app-mark';
 import SegmentedControl from '../../app/ui/segmented-control';
 import type { SearchType } from '../../lib/spotify/endpoints';
 import { useRecentSearches } from '../../lib/storage/recent-searches';
@@ -13,6 +15,7 @@ const DEBOUNCE_MS = 350;
 
 export function SearchPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.search'));
   const [params, setParams] = useSearchParams();
   const query = params.get('q') ?? '';
   const type: SearchType =
@@ -49,9 +52,12 @@ export function SearchPage() {
     <>
       <header className="pt-safe sticky top-0 z-20 bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pt-3 pb-3 lg:px-8 lg:pt-5">
-          <h1 className="text-xl font-bold tracking-tight lg:text-2xl">
-            {t('nav.search')}
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <AppMark />
+            <h1 className="text-xl font-bold tracking-tight lg:text-2xl">
+              {t('nav.search')}
+            </h1>
+          </div>
           <form
             role="search"
             className="relative max-w-3xl"
