@@ -8,6 +8,7 @@ const pending = (id: string, attempts = 0): PendingArchive => ({
   durationMs: 600_000,
   archivedAt: 0,
   attempts,
+  sharedAt: null,
 });
 
 function deps(overrides: Partial<ArchiveSyncDeps> = {}) {
@@ -15,6 +16,7 @@ function deps(overrides: Partial<ArchiveSyncDeps> = {}) {
   const d: ArchiveSyncDeps = {
     pending: () => [pending('a')],
     isIdle: async () => true,
+    alreadyDone: async () => false,
     snapshot: () => ({
       contextUri: 'spotify:playlist:q',
       uri: 'spotify:episode:cur',
@@ -41,6 +43,12 @@ describe('syncNextArchived', () => {
     const { d, calls } = deps({ pending: () => [] });
     expect(await syncNextArchived(d)).toBe('idle');
     expect(calls).toEqual([]);
+  });
+
+  it('only marks as synced what Spotify completed meanwhile', async () => {
+    const { d, calls } = deps({ alreadyDone: async () => true });
+    expect(await syncNextArchived(d)).toBe('synced');
+    expect(calls).toEqual(['synced a']);
   });
 
   it('waits while something is playing', async () => {

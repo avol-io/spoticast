@@ -90,6 +90,7 @@ describe('PodcastPage', () => {
           durationMs: 1,
           archivedAt: 0,
           attempts: 0,
+          sharedAt: null,
         },
       },
     });

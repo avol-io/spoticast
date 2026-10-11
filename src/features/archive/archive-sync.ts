@@ -15,6 +15,8 @@ export interface ArchiveSyncDeps {
   pending: () => PendingArchive[];
   /** True when nothing plays anywhere and the in-browser player is ready. */
   isIdle: () => Promise<boolean>;
+  /** Spotify already counts it as completed (finished elsewhere, or by another device). */
+  alreadyDone: (id: string) => Promise<boolean>;
   snapshot: () => Snapshot | null;
   getVolume: () => Promise<number>;
   setVolume: (volume: number) => Promise<void>;
@@ -47,6 +49,10 @@ export async function syncNextArchived(
   const next = deps.pending().find((p) => p.attempts < MAX_ARCHIVE_ATTEMPTS);
   if (!next) return 'idle';
   if (!(await deps.isIdle())) return 'busy';
+  if (await deps.alreadyDone(next.id).catch(() => false)) {
+    deps.markSynced(next.id);
+    return 'synced';
+  }
 
   const snapshot = deps.snapshot();
   const volume = await deps.getVolume();

@@ -39,6 +39,7 @@ import {
   type NowPlaying,
 } from './playback';
 import { usePlayer } from './player-store';
+import { syncArchive } from '../archive/archive-playlist';
 import {
   MAX_ARCHIVE_ATTEMPTS,
   useArchiveStore,
@@ -347,6 +348,7 @@ export async function resumeSync({ hiddenMs }: { hiddenMs: number }) {
   await queryClient.invalidateQueries({ queryKey: queueKey });
   await pruneFinishedFromQueue().catch(() => undefined);
   await removePassedEpisodes();
+  await syncArchive().catch(() => undefined);
 }
 
 /** Drops what the device played past while the app was away. */
@@ -772,6 +774,8 @@ export function archiveSyncDeps(): ArchiveSyncDeps {
       const state = await getPlaybackState().catch(() => undefined);
       return !state?.is_playing;
     },
+    alreadyDone: async (id) =>
+      !!(await getEpisode(id)).resume_point?.fully_played,
     snapshot: () => {
       const np = usePlayer.getState().nowPlaying;
       return np
@@ -862,6 +866,8 @@ let archiveRun: Promise<void> | null = null;
 /** Completes pending archived episodes one by one while the player is idle. */
 export function runArchiveSync(): Promise<void> {
   archiveRun ??= (async () => {
+    // Other open devices share the archive: don't all start at once.
+    await sleep(Math.random() * 3000);
     for (;;) {
       if (document.hidden) break;
       const result = await syncNextArchived(archiveSyncDeps());

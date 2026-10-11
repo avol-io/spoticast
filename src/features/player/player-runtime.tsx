@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { onForeground } from '../../lib/pwa/foreground';
 import { useSettings } from '../../lib/storage/settings';
+import { syncArchive } from '../archive/archive-playlist';
 import { useArchiveStore } from '../archive/archive-store';
 import { ensureQueuePlaylist, pruneFinishedFromQueue } from '../queue/queue';
 import {
@@ -115,7 +116,10 @@ export function PlayerRuntime() {
     const stopPolling = startPolling();
     const stopWatching = watchQueue();
     const stopResume = onForeground((event) => void resumeSync(event));
-    ensureQueuePlaylist()
+    // Archived elsewhere first: pruning Up Next then drops those too.
+    syncArchive()
+      .catch(() => undefined)
+      .then(() => ensureQueuePlaylist())
       .then(() => pruneFinishedFromQueue())
       .catch(() => undefined);
     return () => {

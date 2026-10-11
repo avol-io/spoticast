@@ -223,7 +223,8 @@ export const it: Dictionary = {
       'Spotify non ha segnato “{{name}}” come ascoltato. Puoi riprovare dalle Impostazioni.',
     settingsTitle: 'Archivio',
     syncHint:
-      'Quando non stai ascoltando nulla, Spoticast segna come ascoltati su Spotify gli episodi archiviati riproducendone in silenzio gli ultimi secondi in questo browser.',
+      'Quando non stai ascoltando nulla, Spoticast segna come ascoltati su Spotify gli episodi archiviati riproducendone in silenzio gli ultimi secondi in questo browser. L’archivio è condiviso tramite la playlist privata “Spoticast · Archivio”, quindi può farlo qualsiasi tuo dispositivo con Spoticast aperto.',
+    playlistName: 'Spoticast · Archivio',
     pending_one: '{{count}} episodio in attesa di sincronizzazione',
     pending_other: '{{count}} episodi in attesa di sincronizzazione',
     failed_one: '{{count}} non sincronizzato',

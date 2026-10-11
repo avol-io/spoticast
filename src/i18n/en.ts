@@ -216,7 +216,8 @@ export const en = {
       'Spotify didn’t mark “{{name}}” as played. You can retry from Settings.',
     settingsTitle: 'Archive',
     syncHint:
-      'While nothing is playing, Spoticast marks archived episodes as played on Spotify by silently playing their last seconds in this browser.',
+      'While nothing is playing, Spoticast marks archived episodes as played on Spotify by silently playing their last seconds in this browser. The archive is shared through the private playlist “Spoticast · Archive”, so any of your devices with Spoticast open can do it.',
+    playlistName: 'Spoticast · Archive',
     pending_one: '{{count}} episode waiting to sync',
     pending_other: '{{count}} episodes waiting to sync',
     failed_one: '{{count}} could not be synced',

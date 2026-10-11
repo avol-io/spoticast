@@ -60,6 +60,7 @@ describe('SettingsPage', () => {
           durationMs: 1,
           archivedAt: 0,
           attempts: 3,
+          sharedAt: null,
         },
         b: {
           id: 'b',
@@ -68,6 +69,7 @@ describe('SettingsPage', () => {
           durationMs: 1,
           archivedAt: 0,
           attempts: 0,
+          sharedAt: null,
         },
       },
     });

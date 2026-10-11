@@ -4,6 +4,7 @@ import type { Device, PlaybackState } from '../../lib/spotify/types';
 import { queueKey, type QueueData } from '../queue/queue';
 import { queryClient } from '../../lib/query/query-client';
 import { useQueueStore } from '../queue/queue-store';
+import * as archive from '../archive/archive-playlist';
 import type { NowPlaying } from './playback';
 import { initPlayer, resumeSync, transferTo } from './player-controller';
 import { usePlayer } from './player-store';
@@ -115,6 +116,14 @@ describe('back from the background', () => {
     await resumeSync({ hiddenMs: 60_000 });
     expect(FakePlayer.last.disconnect).not.toHaveBeenCalled();
     expect(usePlayer.getState().localDeviceId).toBe(id);
+  });
+
+  it('picks up what other devices archived', async () => {
+    vi.spyOn(endpoints, 'getDevices').mockResolvedValue([]);
+    vi.spyOn(endpoints, 'getPlaybackState').mockResolvedValue(undefined);
+    const sync = vi.spyOn(archive, 'syncArchive').mockResolvedValue();
+    await resumeSync({ hiddenMs: 1000 });
+    expect(sync).toHaveBeenCalled();
   });
 
   it('moves playback to this browser even after it lost its id', async () => {
