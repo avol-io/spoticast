@@ -56,6 +56,7 @@ export function HomePage() {
     <>
       <PageHeader
         title={t('nav.podcasts')}
+        mobileTitle="Spoticast.it"
         actions={
           <>
             <IconButton

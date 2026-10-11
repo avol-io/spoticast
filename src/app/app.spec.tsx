@@ -53,7 +53,7 @@ describe('App', () => {
     render(<App />);
     await act(async () => undefined);
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Podcasts' }),
+      screen.getByRole('heading', { level: 1, name: /Podcasts/ }),
     ).toBeInTheDocument();
   });
 });

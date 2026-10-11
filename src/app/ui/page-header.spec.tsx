@@ -39,4 +39,11 @@ describe('PageHeader', () => {
     expect(screen.getByText('Beta')).toBeInTheDocument();
     expect(document.title).toBe('Up Next · Spoticast Beta');
   });
+
+  it('can show another title on mobile', () => {
+    render(<PageHeader title="Podcasts" mobileTitle="Spoticast.it" />);
+    expect(screen.getByText('Spoticast.it')).toHaveClass('lg:hidden');
+    expect(screen.getByText('Podcasts')).toHaveClass('hidden', 'lg:inline');
+    expect(document.title).toBe('Podcasts · Spoticast');
+  });
 });
