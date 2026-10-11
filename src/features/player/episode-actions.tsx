@@ -1,11 +1,11 @@
 import {
   Archive,
   ArchiveRestore,
-  Bookmark,
-  BookmarkMinus,
   ExternalLink,
   ListEnd,
   ListMinus,
+  ListPlus,
+  ListX,
   ListStart,
   MoreVertical,
   Pause,
@@ -21,10 +21,11 @@ import {
   restoreEpisode,
   useIsArchived,
 } from '../archive/use-archive';
+import { openAddToPlaylist } from '../filters/add-to-playlist-sheet';
 import {
-  useIsSavedEpisode,
-  useToggleSavedEpisode,
-} from '../library/your-episodes';
+  removeFromManualPlaylist,
+  type ManualPlaylist,
+} from '../filters/manual-playlists';
 import { shareLink } from '../podcast/podcast-hero';
 import { addToQueue, removeFromQueue, useIsInQueue } from '../queue/queue';
 import { playEpisode, togglePlay } from './player-controller';
@@ -64,16 +65,20 @@ export interface EpisodeActionsProps {
   episode: Episode;
   /** The show publishes video: offer the embedded video player. */
   video?: boolean;
+  /** Rows of a manual playlist can also be removed from it. */
+  playlist?: ManualPlaylist;
 }
 
 /** Play button plus the "more" menu of an episode row. */
-export function EpisodeActions({ episode, video }: EpisodeActionsProps) {
+export function EpisodeActions({
+  episode,
+  video,
+  playlist,
+}: EpisodeActionsProps) {
   const { t } = useTranslation();
   const nowPlayingUri = usePlayer((s) => s.nowPlaying?.uri);
   const setVideo = usePlayer((s) => s.setVideo);
   const inQueue = useIsInQueue(episode.uri);
-  const saved = useIsSavedEpisode(episode.uri);
-  const toggleSaved = useToggleSavedEpisode();
   const archived = useIsArchived()(episode);
 
   const items: MenuItem[] = [
@@ -111,10 +116,22 @@ export function EpisodeActions({ episode, video }: EpisodeActionsProps) {
           onSelect: () => archiveEpisode(episode),
         },
     {
-      label: saved ? t('episode.unsaveEpisode') : t('episode.saveEpisode'),
-      icon: saved ? <BookmarkMinus /> : <Bookmark />,
-      onSelect: () => toggleSaved.mutate({ episode, save: !saved }),
+      label: t('playlists.addTo'),
+      icon: <ListPlus />,
+      onSelect: () => openAddToPlaylist([episode]),
     },
+    ...(playlist
+      ? [
+          {
+            label: t('playlists.remove'),
+            icon: <ListX />,
+            onSelect: () =>
+              void removeFromManualPlaylist(playlist, [episode.uri]).catch(
+                () => undefined,
+              ),
+          },
+        ]
+      : []),
     ...(video
       ? [
           {

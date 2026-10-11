@@ -21,7 +21,6 @@ import {
   ListMusic,
   ListX,
   MoreVertical,
-  RefreshCw,
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -41,7 +40,6 @@ import EpisodeSwipeRow from '../podcast/episode-swipe-row';
 import { useSelectableList } from '../selection/selection-store';
 import { clearQueue, moveInQueue, removeFromQueue, useQueue } from './queue';
 import { useQueueStore } from './queue-store';
-import SyncDialog from './sync-dialog';
 import { useErrorText } from '../../lib/spotify/errors';
 
 function QueueItem({
@@ -156,7 +154,6 @@ export function QueuePage() {
   const queue = useQueue();
   const nowPlayingUri = usePlayer((s) => s.nowPlaying?.uri);
   const playlistId = useQueueStore((s) => s.playlistId);
-  const [syncOpen, setSyncOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -190,11 +187,6 @@ export function QueuePage() {
             label={t('episode.more')}
             icon={<MoreVertical />}
             items={[
-              {
-                label: t('queue.sync'),
-                icon: <RefreshCw />,
-                onSelect: () => setSyncOpen(true),
-              },
               ...(episodes.length > 0
                 ? [
                     {
@@ -288,7 +280,6 @@ export function QueuePage() {
           )}
         </div>
       </div>
-      <SyncDialog open={syncOpen} onClose={() => setSyncOpen(false)} />
       <ClearDialog open={clearOpen} onClose={() => setClearOpen(false)} />
     </>
   );

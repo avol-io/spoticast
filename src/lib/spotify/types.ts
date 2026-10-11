@@ -76,11 +76,6 @@ export interface SavedShow {
   show: SimplifiedShow;
 }
 
-export interface SavedEpisode {
-  added_at: string;
-  episode: Episode;
-}
-
 export interface User {
   id: string;
   display_name: string | null;

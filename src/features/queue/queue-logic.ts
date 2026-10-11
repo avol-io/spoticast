@@ -1,5 +1,3 @@
-import type { SavedEpisode } from '../../lib/spotify/types';
-
 /**
  * Spotify's reorder API takes the index to insert *before*, counted in the
  * list before the move. Moving item `from` so that it ends up at `to`:
@@ -24,22 +22,4 @@ export function playNextPosition(
   nowPlayingUri: string | undefined,
 ): number {
   return nowPlayingUri && queueUris[0] === nowPlayingUri ? 1 : 0;
-}
-
-export interface MirrorPlan {
-  toAdd: string[];
-  toRemove: SavedEpisode[];
-}
-
-/** What makes "Your Episodes" equal to the queue. */
-export function planMirror(
-  queueUris: string[],
-  saved: SavedEpisode[],
-): MirrorPlan {
-  const savedUris = new Set(saved.map((s) => s.episode.uri));
-  const queued = new Set(queueUris);
-  return {
-    toAdd: [...queued].filter((uri) => !savedUris.has(uri)),
-    toRemove: saved.filter((s) => !queued.has(s.episode.uri)),
-  };
 }

@@ -57,6 +57,10 @@ export const routes: RouteObject[] = [
         path: 'playlists/:filterId',
         lazy: page(() => import('../features/filters/smart-list-page')),
       },
+      {
+        path: 'playlists/m/:playlistId',
+        lazy: page(() => import('../features/filters/manual-playlist-page')),
+      },
       // Smart playlists were called smart filters.
       { path: 'filters', element: <Navigate to="/playlists" replace /> },
       { path: 'filters/:filterId', element: <LegacyPlaylistRedirect /> },

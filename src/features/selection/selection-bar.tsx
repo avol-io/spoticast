@@ -1,9 +1,18 @@
-import { Archive, ListEnd, ListMinus, ListStart, X } from 'lucide-react';
+import {
+  Archive,
+  ListEnd,
+  ListMinus,
+  ListPlus,
+  ListStart,
+  X,
+} from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import IconButton from '../../app/ui/icon-button';
 import { toast } from '../../lib/storage/toasts';
 import { archiveEpisodes } from '../archive/use-archive';
+import { openAddToPlaylist } from '../filters/add-to-playlist-sheet';
+import { removeFromManualPlaylist } from '../filters/manual-playlists';
 import { usePlayer } from '../player/player-store';
 import { insertIntoQueue, removeManyFromQueue } from '../queue/queue';
 import { useSelection } from './selection-store';
@@ -47,6 +56,7 @@ export function SelectionBar() {
 
   if (!scope) return null;
   const chosen = episodes.filter((ep) => selected.includes(ep.uri));
+  const playlist = typeof kind === 'object' ? kind.playlist : null;
   const none = chosen.length === 0;
   const run = (action: () => Promise<unknown> | void) => {
     clear();
@@ -107,6 +117,27 @@ export function SelectionBar() {
             }
           />
         )}
+        {playlist && (
+          <Action
+            icon={<ListMinus />}
+            label={t('selection.removeFromPlaylist')}
+            disabled={none}
+            onClick={() =>
+              run(() =>
+                removeFromManualPlaylist(
+                  playlist,
+                  chosen.map((ep) => ep.uri),
+                ),
+              )
+            }
+          />
+        )}
+        <Action
+          icon={<ListPlus />}
+          label={t('selection.addToPlaylist')}
+          disabled={none}
+          onClick={() => run(() => openAddToPlaylist(chosen))}
+        />
         <Action
           icon={<Archive />}
           label={t('selection.archive')}

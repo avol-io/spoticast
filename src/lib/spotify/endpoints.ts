@@ -5,7 +5,6 @@ import type {
   Paging,
   PlaybackState,
   PlaylistItem,
-  SavedEpisode,
   SavedShow,
   SearchResults,
   Show,
@@ -31,13 +30,7 @@ export const getMe = () => spotify<User>('/me');
 export const getSavedShows = (signal?: AbortSignal) =>
   getAll<SavedShow>('/me/shows', { query: { limit: PAGE_SIZE }, signal });
 
-export const getSavedEpisodes = (signal?: AbortSignal) =>
-  getAll<SavedEpisode>('/me/episodes', {
-    query: { limit: PAGE_SIZE, market },
-    signal,
-  });
-
-/** Saves shows (follow) or episodes ("Your Episodes") by URI. */
+/** Saves (follows) shows and playlists by URI. */
 export async function saveToLibrary(uris: string[]) {
   for (const batch of chunk(uris, LIBRARY_BATCH)) {
     await spotify<void>('/me/library', {

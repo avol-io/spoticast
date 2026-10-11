@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryClient } from '../../lib/query/query-client';
 import type { Episode } from '../../lib/spotify/types';
-import { savedEpisodesKey } from '../library/your-episodes';
+import * as addSheet from '../filters/add-to-playlist-sheet';
+import * as manual from '../filters/manual-playlists';
 import * as queue from '../queue/queue';
 import * as controller from './player-controller';
 import { usePlayer } from './player-store';
@@ -19,12 +20,11 @@ const episode = {
   resume_point: { fully_played: false, resume_position_ms: 90_000 },
 } as Episode;
 
-function renderActions(video = false) {
+function renderActions(video = false, playlist?: manual.ManualPlaylist) {
   queryClient.setQueryData(queue.queueKey, { episodes: [], otherCount: 0 });
-  queryClient.setQueryData(savedEpisodesKey, []);
   render(
     <QueryClientProvider client={queryClient}>
-      <EpisodeActions episode={episode} video={video} />
+      <EpisodeActions episode={episode} video={video} playlist={playlist} />
     </QueryClientProvider>,
   );
 }
@@ -82,5 +82,28 @@ describe('EpisodeActions', () => {
     await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Restore' }));
     expect(useArchiveStore.getState().pending).toEqual({});
+  });
+
+  it('adds the episode to a playlist', async () => {
+    const open = vi.spyOn(addSheet, 'openAddToPlaylist');
+    renderActions();
+    await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: 'Add to playlist…' }),
+    );
+    expect(open).toHaveBeenCalledWith([episode]);
+  });
+
+  it('removes the episode from the playlist it is listed in', async () => {
+    const playlist = { id: 'p1', uri: 'spotify:playlist:p1', name: 'Later' };
+    const remove = vi
+      .spyOn(manual, 'removeFromManualPlaylist')
+      .mockResolvedValue();
+    renderActions(false, playlist);
+    await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: 'Remove from playlist' }),
+    );
+    expect(remove).toHaveBeenCalledWith(playlist, [episode.uri]);
   });
 });

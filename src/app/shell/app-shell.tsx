@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, ScrollRestoration } from 'react-router-dom';
+import AddToPlaylistSheet from '../../features/filters/add-to-playlist-sheet';
 import SmartPlaylistsRuntime from '../../features/filters/smart-playlists-runtime';
 import MiniPlayer from '../../features/player/mini-player';
 import PlayerRuntime from '../../features/player/player-runtime';
@@ -65,6 +66,7 @@ export function AppShell() {
         {fullPlayerOpen && <FullPlayer />}
         {videoOpen && <VideoSheet />}
       </Suspense>
+      <AddToPlaylistSheet />
       <PlayerRuntime />
       <SmartPlaylistsRuntime />
       <ScrollRestoration />

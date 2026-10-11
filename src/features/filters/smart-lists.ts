@@ -132,13 +132,13 @@ async function computeEpisodes(list: SmartList): Promise<Episode[]> {
 }
 
 let meId: Promise<string> | null = null;
-const currentUserId = () => (meId ??= getMe().then((me) => me.id));
+export const currentUserId = () => (meId ??= getMe().then((me) => me.id));
 
-const playlistName = (list: Pick<SmartList, 'name'>) =>
+export const playlistName = (list: Pick<SmartList, 'name'>) =>
   `${SMART_PLAYLIST_PREFIX}${list.name}`;
 
 /** List name from a playlist name, which can be renamed in Spotify. */
-const listName = (name: string, fallback: string) =>
+export const listName = (name: string, fallback: string) =>
   (name.startsWith(SMART_PLAYLIST_PREFIX)
     ? name.slice(SMART_PLAYLIST_PREFIX.length)
     : name

@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import type { Episode } from '../../lib/spotify/types';
+import type { ManualPlaylist } from '../filters/manual-playlists';
 
-/** Which bulk actions a list offers: Up Next can also remove. */
-export type SelectionKind = 'episodes' | 'queue';
+/** Which bulk actions a list offers: Up Next and manual playlists can also remove. */
+export type SelectionKind = 'episodes' | 'queue' | { playlist: ManualPlaylist };
 
 interface SelectionState {
   /** The list in selection mode; null when not selecting. */

@@ -4,6 +4,7 @@ import {
   ListEnd,
   ListMinus,
   ListStart,
+  ListX,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +15,10 @@ import {
   restoreEpisode,
   useIsArchived,
 } from '../archive/use-archive';
+import {
+  removeFromManualPlaylist,
+  type ManualPlaylist,
+} from '../filters/manual-playlists';
 import { usePlayer } from '../player/player-store';
 import { addToQueue, removeFromQueue } from '../queue/queue';
 import { useSelection } from '../selection/selection-store';
@@ -22,6 +27,8 @@ export interface EpisodeSwipeRowProps {
   episode: Episode;
   /** Up Next rows can also be removed from the queue. */
   inQueue?: boolean;
+  /** Rows of a manual playlist can also be removed from it. */
+  playlist?: ManualPlaylist;
   /** Starts the selection on this row (from `useSelectableList`). */
   onStartSelection: () => void;
   selecting: boolean;
@@ -30,12 +37,13 @@ export interface EpisodeSwipeRowProps {
 
 /**
  * An episode row with swipe actions (play next, play last, archive; plus
- * remove in Up Next) and press-and-hold to select. The row menu offers the
+ * remove in Up Next and in manual playlists) and press-and-hold to select. The row menu offers the
  * same actions.
  */
 export function EpisodeSwipeRow({
   episode,
   inQueue = false,
+  playlist,
   onStartSelection,
   selecting,
   children,
@@ -69,6 +77,19 @@ export function EpisodeSwipeRow({
             tone: 'neutral' as const,
             onSelect: () =>
               void removeFromQueue(episode.uri).catch(() => undefined),
+          },
+        ]
+      : []),
+    ...(playlist
+      ? [
+          {
+            label: t('playlists.remove'),
+            icon: <ListX />,
+            tone: 'neutral' as const,
+            onSelect: () =>
+              void removeFromManualPlaylist(playlist, [episode.uri]).catch(
+                () => undefined,
+              ),
           },
         ]
       : []),
