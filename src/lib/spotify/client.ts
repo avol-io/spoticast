@@ -4,6 +4,8 @@ import type { Paging } from './types';
 export const API_BASE = 'https://api.spotify.com/v1';
 const MAX_CONCURRENT = 4;
 const MAX_RATE_LIMIT_RETRIES = 3;
+const MAX_NETWORK_RETRIES = 1;
+const NETWORK_RETRY_MS = 1500;
 
 export class SpotifyApiError extends Error {
   override name = 'SpotifyApiError';
@@ -54,8 +56,8 @@ function buildUrl(path: string, query?: RequestOptions['query']) {
 
 /**
  * Calls the Web API with the user's token. Retries once after refreshing the
- * token on 401 and waits out Retry-After on 429. Resolves to undefined for
- * empty responses.
+ * token on 401, once shortly after a network error, and waits out
+ * Retry-After on 429. Resolves to undefined for empty responses.
  */
 export async function spotify<T>(
   path: string,
@@ -64,11 +66,13 @@ export async function spotify<T>(
   const url = buildUrl(path, query);
   let forceRefresh = false;
   let rateLimitRetries = 0;
+  let networkRetries = 0;
 
   for (;;) {
     const token = await getAccessToken({ forceRefresh });
     await acquire();
-    let res: Response;
+    let res: Response | undefined;
+    let networkError: unknown;
     try {
       res = await fetch(url, {
         method,
@@ -79,8 +83,19 @@ export async function spotify<T>(
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
       });
+    } catch (error) {
+      networkError = error;
     } finally {
       release();
+    }
+    if (!res) {
+      // Back from the background, iOS wakes the network after the page.
+      if (networkRetries < MAX_NETWORK_RETRIES && !signal?.aborted) {
+        networkRetries++;
+        await sleep(NETWORK_RETRY_MS);
+        continue;
+      }
+      throw networkError;
     }
 
     if (res.status === 401 && !forceRefresh) {

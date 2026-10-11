@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
+import { onForeground } from '../../lib/pwa/foreground';
 import { useSettings } from '../../lib/storage/settings';
 import { useArchiveStore } from '../archive/archive-store';
 import { ensureQueuePlaylist, pruneFinishedFromQueue } from '../queue/queue';
 import {
   initPlayer,
   next,
+  resumeSync,
   runArchiveSync,
   seekTo,
   skip,
@@ -112,12 +114,14 @@ export function PlayerRuntime() {
     void initPlayer();
     const stopPolling = startPolling();
     const stopWatching = watchQueue();
+    const stopResume = onForeground((event) => void resumeSync(event));
     ensureQueuePlaylist()
       .then(() => pruneFinishedFromQueue())
       .catch(() => undefined);
     return () => {
       stopPolling();
       stopWatching();
+      stopResume();
     };
   }, []);
   useMediaSession();

@@ -22,8 +22,10 @@ import {
   playlistUri,
   prependToQueue,
   queueKey,
+  pruneFinishedFromQueue,
   queueSettled,
   removeFromQueue,
+  removeManyFromQueue,
   type QueueData,
 } from '../queue/queue';
 import { queueDrift, upcoming } from '../queue/queue-sync';
@@ -86,8 +88,14 @@ export function setNowPlaying(next: NowPlaying | null) {
   usePlayer.setState({ nowPlaying: next });
   const finished = finishedEpisode(prev, next);
   if (finished) onEpisodeFinished(finished);
-  if (prev && next && prev.uri !== next.uri && inUpNext(next))
+  if (prev && next && prev.uri !== next.uri && inUpNext(next)) {
+    // The device moved on by itself (end, or skipped in another app): the
+    // episode it left is done with. A start of ours keeps it queued.
+    if (next.uri === expectedStart) expectedStart = null;
+    else if (inUpNext(prev))
+      void removeFromQueue(prev.uri, { silent: true }).catch(() => undefined);
     onUpNextTransition(prev.uri);
+  }
 }
 
 function patchNowPlaying(patch: Partial<NowPlaying>) {
@@ -152,6 +160,11 @@ export async function initPlayer() {
   });
   instance.addListener('not_ready', () => {
     usePlayer.setState({ sdkStatus: 'loading' });
+    // This browser left Spotify Connect: ask where playback is.
+    if (usePlayer.getState().nowPlaying?.isLocal) {
+      patchNowPlaying({ isLocal: false });
+      schedulePoll(0);
+    }
   });
   instance.addListener('player_state_changed', (state) => {
     const { localDeviceId, nowPlaying } = usePlayer.getState();
@@ -190,18 +203,102 @@ export async function initPlayer() {
   await instance.connect();
 }
 
+let reconnecting: Promise<string | undefined> | null = null;
+
+/** Resolves with the SDK device id once ready, or undefined on timeout. */
+function waitForSdkReady(timeoutMs: number): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const check = () => {
+      const { sdkStatus, localDeviceId } = usePlayer.getState();
+      if (sdkStatus !== 'ready' || !localDeviceId) return false;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(localDeviceId);
+      return true;
+    };
+    const timer = setTimeout(() => {
+      unsubscribe();
+      resolve(undefined);
+    }, timeoutMs);
+    const unsubscribe = usePlayer.subscribe(() => void check());
+    check();
+  });
+}
+
+/**
+ * Connects this browser's player to Spotify again (iOS drops it in the
+ * background without telling): it comes back with a new device id.
+ */
+export function reconnectSdk(): Promise<string | undefined> {
+  if (!player) return Promise.resolve(undefined);
+  const sdk = player;
+  reconnecting ??= (async () => {
+    usePlayer.setState({ sdkStatus: 'loading', localDeviceId: undefined });
+    sdk.disconnect();
+    const ready = waitForSdkReady(10_000);
+    await sdk.connect();
+    return ready;
+  })().finally(() => {
+    reconnecting = null;
+  });
+  return reconnecting;
+}
+
+/** True when Spotify still lists this browser's player. */
+async function sdkRegistered(): Promise<boolean> {
+  const { localDeviceId, sdkStatus } = usePlayer.getState();
+  if (!player || sdkStatus !== 'ready' || !localDeviceId) return false;
+  if (await player.getCurrentState().catch(() => null)) return true;
+  const devices = await getDevices().catch(() => null);
+  // Can't tell (offline): leave it alone.
+  return !devices || devices.some((d) => d.id === localDeviceId);
+}
+
+/**
+ * Runs a command on `deviceId`. When Spotify no longer knows that device
+ * (404), it reconnects this browser if it was the one lost, picks the
+ * preferred available device and tries once more.
+ */
+async function onLiveDevice(
+  deviceId: string | undefined,
+  run: (deviceId: string | undefined) => Promise<void>,
+): Promise<void> {
+  try {
+    await run(deviceId);
+  } catch (error) {
+    if (!(error instanceof SpotifyApiError && error.status === 404))
+      throw error;
+    const devices = await getDevices();
+    const { localDeviceId } = usePlayer.getState();
+    if (player && !devices.some((d) => d.id === localDeviceId))
+      await reconnectSdk();
+    const picked = pickPlaybackDevice(
+      useSettings.getState().preferredDevice,
+      devices.filter((d) => d.id !== deviceId),
+      usePlayer.getState().localDeviceId,
+    );
+    if (!picked || picked.deviceId === deviceId) throw error;
+    await run(picked.deviceId);
+  }
+}
+
 // --- Polling (other devices) -------------------------------------------------
 
 let pollTimer: ReturnType<typeof setTimeout> | undefined;
 
 async function poll() {
-  const { localDeviceId, nowPlaying } = usePlayer.getState();
-  // The SDK pushes local state; only ask the API about other devices.
-  if (!(nowPlaying?.isLocal && !nowPlaying.paused)) {
+  const { nowPlaying } = usePlayer.getState();
+  // The SDK pushes local state while it plays, if it is still connected.
+  const sdkState =
+    nowPlaying?.isLocal && player
+      ? await player.getCurrentState().catch(() => null)
+      : null;
+  if (!(sdkState && !nowPlaying?.paused)) {
     try {
       const state = await getPlaybackState();
-      const next = fromApiState(state, localDeviceId);
-      if (!next?.isLocal) setNowPlaying(next);
+      const next = fromApiState(state, usePlayer.getState().localDeviceId);
+      // Without SDK state, the API is the only truth (even about here).
+      if (!next?.isLocal || !sdkState) setNowPlaying(next);
     } catch {
       // Offline or rate limited: try again later.
     }
@@ -220,14 +317,47 @@ function schedulePoll(delay?: number) {
   pollTimer = setTimeout(() => void poll(), delay ?? interval);
 }
 
+/** Polls the playback state; `resumeSync` polls again on return. */
 export function startPolling() {
   schedulePoll(0);
-  const onVisibility = () => !document.hidden && schedulePoll(0);
-  document.addEventListener('visibilitychange', onVisibility);
-  return () => {
-    clearTimeout(pollTimer);
-    document.removeEventListener('visibilitychange', onVisibility);
-  };
+  return () => clearTimeout(pollTimer);
+}
+
+/** Below this, a trip to the background can't have broken anything. */
+const RESUME_CHECK_MS = 5_000;
+
+/**
+ * Back from the background (see lib/pwa/foreground): nothing ran meanwhile,
+ * so refresh the token, reconnect this browser's player if Spotify dropped
+ * it, re-read where playback is, and refresh devices and Up Next.
+ */
+export async function resumeSync({ hiddenMs }: { hiddenMs: number }) {
+  if (archiveSyncing) return;
+  try {
+    await getAccessToken();
+  } catch {
+    // Offline: the "online" event brings us back here.
+    return;
+  }
+  if (hiddenMs >= RESUME_CHECK_MS && player && !(await sdkRegistered()))
+    await reconnectSdk();
+  clearTimeout(pollTimer);
+  await poll();
+  void queryClient.invalidateQueries({ queryKey: ['devices'] });
+  await queryClient.invalidateQueries({ queryKey: queueKey });
+  await pruneFinishedFromQueue().catch(() => undefined);
+  await removePassedEpisodes();
+}
+
+/** Drops what the device played past while the app was away. */
+async function removePassedEpisodes() {
+  const np = usePlayer.getState().nowPlaying;
+  if (!loadedOrder || !inUpNext(np)) return;
+  const index = loadedOrder.indexOf(np.uri);
+  if (index <= 0) return;
+  await removeManyFromQueue(loadedOrder.slice(0, index), {
+    silent: true,
+  }).catch(() => undefined);
 }
 
 // --- Commands ---------------------------------------------------------------
@@ -276,6 +406,8 @@ let loadedOrder: string[] | null = null;
 let queueDirty = false;
 /** Context starts in flight: their state events are not drift. */
 let starting = 0;
+/** Episode our last start asked for: reaching it is not the device moving on. */
+let expectedStart: string | null = null;
 let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
 
 const queueEpisodes = () =>
@@ -300,12 +432,15 @@ async function startUpNext(options: {
   starting++;
   try {
     const order = (queueEpisodes() ?? []).map((ep) => ep.uri);
-    await startPlayback({
-      deviceId: options.deviceId,
-      contextUri: `spotify:playlist:${playlistId}`,
-      offsetUri: options.uri,
-      positionMs: options.positionMs,
-    });
+    expectedStart = options.uri;
+    await onLiveDevice(options.deviceId, (deviceId) =>
+      startPlayback({
+        deviceId,
+        contextUri: `spotify:playlist:${playlistId}`,
+        offsetUri: options.uri,
+        positionMs: options.positionMs,
+      }),
+    );
     loadedOrder = order;
     queueDirty = false;
   } finally {
@@ -411,6 +546,7 @@ export function resetQueueSync() {
   loadedOrder = null;
   queueDirty = false;
   starting = 0;
+  expectedStart = null;
   clearTimeout(reconcileTimer);
 }
 
@@ -470,8 +606,18 @@ export function togglePlay(): Promise<void> {
     local: (sdk) => sdk.togglePlay(),
     remote: (deviceId) =>
       guarded(async () => {
-        if (np.paused) await startPlayback({ deviceId });
-        else await pausePlayback(deviceId);
+        if (!np.paused) return pausePlayback(deviceId);
+        const { uri } = np;
+        const positionMs = currentPosition(np);
+        const upNext = inUpNext(np);
+        // A device that disappeared has nothing loaded: start it over.
+        await onLiveDevice(deviceId, (id) =>
+          id === deviceId
+            ? startPlayback({ deviceId: id })
+            : upNext
+              ? startUpNext({ deviceId: id, uri, positionMs })
+              : startPlayback({ deviceId: id, uris: [uri], positionMs }),
+        );
       }),
   });
 }
@@ -539,7 +685,18 @@ export function transferTo(deviceId: string) {
   userAction();
   void player?.activateElement();
   const np = usePlayer.getState().nowPlaying;
-  return guarded(() => transferPlayback(deviceId, !!np && !np.paused));
+  const play = !!np && !np.paused;
+  return guarded(async () => {
+    // "This browser" may have lost its id in the background.
+    const { localDeviceId } = usePlayer.getState();
+    const target =
+      deviceId === localDeviceId && player && !(await sdkRegistered())
+        ? await reconnectSdk()
+        : deviceId;
+    await onLiveDevice(target, (id) =>
+      id ? transferPlayback(id, play) : Promise.reject(new Error('no device')),
+    );
+  });
 }
 
 /**

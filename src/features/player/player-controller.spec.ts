@@ -1,6 +1,8 @@
 import { queryClient } from '../../lib/query/query-client';
+import { SpotifyApiError } from '../../lib/spotify/client';
 import * as endpoints from '../../lib/spotify/endpoints';
-import type { Episode } from '../../lib/spotify/types';
+import type { Device, Episode } from '../../lib/spotify/types';
+import { useSettings } from '../../lib/storage/settings';
 import {
   moveInQueue,
   queueKey,
@@ -151,6 +153,37 @@ describe('Up Next sync', () => {
         positionMs: 5000,
       }),
     );
+  });
+
+  it('drops the episode the device moved on from', async () => {
+    const remove = vi.mocked(endpoints.removePlaylistItems);
+    await startA();
+    setNowPlaying(playing('b', { positionMs: 0 }));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(remove).toHaveBeenCalledWith('pl', ['spotify:episode:a']);
+  });
+
+  it('keeps the episode the user switched away from', async () => {
+    const remove = vi.mocked(endpoints.removePlaylistItems);
+    await startA();
+    await playEpisode(ep('c'));
+    setNowPlaying(playing('c', { positionMs: 0 }));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('starts on another device when Spotify lost the target', async () => {
+    useSettings.setState({ preferredDevice: null });
+    vi.spyOn(endpoints, 'getDevices').mockResolvedValue([
+      { id: 'phone', name: 'Pixel', type: 'Smartphone' } as Device,
+    ]);
+    await startA();
+    play.mockRejectedValueOnce(new SpotifyApiError(404, 'Device not found'));
+    await playEpisode(ep('b'));
+    expect(play.mock.calls.map(([options]) => options.deviceId)).toEqual([
+      'speaker',
+      'phone',
+    ]);
   });
 
   it('leaves the device alone when the order is unchanged', async () => {

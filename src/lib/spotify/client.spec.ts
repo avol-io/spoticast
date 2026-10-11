@@ -34,6 +34,27 @@ describe('spotify client', () => {
     expect(init.headers.Authorization).toBe('Bearer token-1');
   });
 
+  it('tries again once after a network error', async () => {
+    vi.useFakeTimers();
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('Load failed'))
+      .mockResolvedValueOnce(json({ id: 'me' }));
+    const result = spotify<{ id: string }>('/me');
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(await result).toEqual({ id: 'me' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up after the network retry', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockRejectedValue(new TypeError('Load failed'));
+    const result = spotify('/me');
+    const assertion = expect(result).rejects.toThrow('Load failed');
+    await vi.advanceTimersByTimeAsync(1500);
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('resolves empty responses to undefined', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
     expect(await spotify('/me/player')).toBeUndefined();
