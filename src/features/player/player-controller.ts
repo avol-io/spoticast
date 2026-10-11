@@ -220,6 +220,23 @@ export function startPolling() {
 
 // --- Commands ---------------------------------------------------------------
 
+/**
+ * Picks the branch for where playback is: this browser through the Web
+ * Playback SDK (`local`) or another Spotify Connect device (`remote`). Every
+ * command that acts on the current playback goes through here.
+ */
+function onTarget<T>(
+  np: NowPlaying,
+  branches: {
+    local: (sdk: Spotify.Player) => T;
+    remote: (deviceId: string | undefined) => T;
+  },
+): T {
+  return np.isLocal && player
+    ? branches.local(player)
+    : branches.remote(np.deviceId ?? undefined);
+}
+
 /** Device to start playback on: where it's already playing, else this browser. */
 async function targetDevice(): Promise<string | undefined> {
   const { nowPlaying, localDeviceId } = usePlayer.getState();
@@ -261,14 +278,14 @@ export function togglePlay(): Promise<void> {
     const head = queryClient.getQueryData<QueueData>(queueKey)?.episodes[0];
     return head ? playEpisode(head) : Promise.resolve();
   }
-  if (np.isLocal && player) {
-    patchNowPlaying({ paused: !np.paused, positionMs: currentPosition(np) });
-    return player.togglePlay();
-  }
-  return guarded(async () => {
-    patchNowPlaying({ paused: !np.paused, positionMs: currentPosition(np) });
-    if (np.paused) await startPlayback({ deviceId: np.deviceId ?? undefined });
-    else await pausePlayback(np.deviceId ?? undefined);
+  patchNowPlaying({ paused: !np.paused, positionMs: currentPosition(np) });
+  return onTarget(np, {
+    local: (sdk) => sdk.togglePlay(),
+    remote: (deviceId) =>
+      guarded(async () => {
+        if (np.paused) await startPlayback({ deviceId });
+        else await pausePlayback(deviceId);
+      }),
   });
 }
 
@@ -278,8 +295,10 @@ export function seekTo(positionMs: number) {
   if (!np) return Promise.resolve();
   const clamped = Math.max(0, Math.min(np.durationMs - 1000, positionMs));
   patchNowPlaying({ positionMs: clamped });
-  if (np.isLocal && player) return player.seek(clamped);
-  return guarded(() => seekPlayback(clamped, np.deviceId ?? undefined));
+  return onTarget(np, {
+    local: (sdk) => sdk.seek(clamped),
+    remote: (deviceId) => guarded(() => seekPlayback(clamped, deviceId)),
+  });
 }
 
 export function skip(seconds: number) {
@@ -294,8 +313,10 @@ export function next() {
   if (!np) return Promise.resolve();
   const skipped = np.uri;
   return guarded(async () => {
-    if (np.isLocal && player) await player.nextTrack();
-    else await skipToNext(np.deviceId ?? undefined);
+    await onTarget(np, {
+      local: (sdk) => sdk.nextTrack(),
+      remote: (deviceId) => skipToNext(deviceId),
+    });
     await removeFromQueue(skipped, { silent: true });
   });
 }
