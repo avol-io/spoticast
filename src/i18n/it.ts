@@ -291,6 +291,9 @@ export const it: Dictionary = {
     playlistSynced: 'Playlist “{{name}}” aggiornata',
     notFound: 'Questa playlist non esiste più.',
     playAll: 'Riproduci tutti',
+    playList: 'Riproduci {{name}}',
+    playAllLimited:
+      'Sono stati aggiunti in coda solo i primi {{count}} episodi',
     removedElsewhere:
       'La playlist “{{name}}” è stata eliminata su un altro dispositivo',
     syncHint:

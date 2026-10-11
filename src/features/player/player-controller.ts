@@ -20,6 +20,7 @@ import {
   ensureQueuePlaylist,
   moveToHead,
   playlistUri,
+  prependToQueue,
   queueKey,
   queueSettled,
   removeFromQueue,
@@ -429,6 +430,27 @@ export function playEpisode(episode: Episode): Promise<void> {
       deviceId: await targetDevice(),
       uri: episode.uri,
       positionMs: resumePosition(episode),
+    });
+  });
+}
+
+/** Most episodes "Play all" puts in Up Next (one playlist write). */
+export const PLAY_ALL_LIMIT = 100;
+
+/** Puts `episodes` at the head of Up Next and plays the first one. */
+export function playAll(episodes: Episode[]): Promise<void> {
+  userAction();
+  void player?.activateElement();
+  const head = episodes.slice(0, PLAY_ALL_LIMIT);
+  if (!head.length) return Promise.resolve();
+  if (episodes.length > head.length)
+    toast(i18n.t('smart.playAllLimited', { count: PLAY_ALL_LIMIT }));
+  return guarded(async () => {
+    await prependToQueue(head);
+    await startUpNext({
+      deviceId: await targetDevice(),
+      uri: head[0].uri,
+      positionMs: resumePosition(head[0]),
     });
   });
 }

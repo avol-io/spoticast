@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { emptyCriteria } from '../../lib/filters/engine';
 import { useFilters } from '../../lib/storage/filters';
 import { libraryKeys } from '../library/queries';
+import * as controller from '../player/player-controller';
 
 import FiltersPage from './filters-page';
 
@@ -54,7 +55,7 @@ describe('FiltersPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('lists smart playlists with their summary and episode count', () => {
+  it('lists smart playlists with their summary and episode count', async () => {
     useFilters.setState({
       smartLists: [
         {
@@ -78,5 +79,9 @@ describe('FiltersPage', () => {
     expect(link).toHaveTextContent('≤ 20 min');
     expect(link).toHaveTextContent('1 episode');
     expect(link).toHaveTextContent('SPOTIFY');
+    const play = vi.spyOn(controller, 'playAll').mockResolvedValue();
+    await userEvent.click(screen.getByRole('button', { name: 'Play Short' }));
+    expect(play.mock.calls[0][0]).toHaveLength(1);
+    play.mockRestore();
   });
 });

@@ -6,6 +6,7 @@ import {
   ensureQueuePlaylist,
   moveInQueue,
   moveToHead,
+  prependToQueue,
   queueKey,
   removeFromQueue,
   resetQueuePlaylistCache,
@@ -59,6 +60,23 @@ describe('queue', () => {
     await moveToHead(ep('c'));
     expect(reorder).toHaveBeenCalledWith('pl', 2, 0);
     expect(uris()).toEqual(['c', 'a', 'b']);
+  });
+
+  it('puts a list at the head without duplicates', async () => {
+    const remove = vi
+      .spyOn(endpoints, 'removePlaylistItems')
+      .mockResolvedValue({ snapshot_id: 's' });
+    const add = vi
+      .spyOn(endpoints, 'addPlaylistItems')
+      .mockResolvedValue({ snapshot_id: 's' });
+    await prependToQueue([ep('x'), ep('c'), ep('x')]);
+    expect(remove).toHaveBeenCalledWith('pl', ['spotify:episode:c']);
+    expect(add).toHaveBeenCalledWith(
+      'pl',
+      ['spotify:episode:x', 'spotify:episode:c'],
+      0,
+    );
+    expect(uris()).toEqual(['x', 'c', 'a', 'b']);
   });
 
   it('runs writes in order', async () => {

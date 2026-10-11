@@ -285,6 +285,8 @@ export const en = {
     playlistSynced: 'Playlist “{{name}}” updated',
     notFound: 'This playlist no longer exists.',
     playAll: 'Play all',
+    playList: 'Play {{name}}',
+    playAllLimited: 'Only the first {{count}} episodes were added to Up Next',
     removedElsewhere: 'Playlist “{{name}}” was removed on another device',
     syncHint:
       'The playlist syncs with your other devices through Spotify; turning this off keeps it only on this one.',

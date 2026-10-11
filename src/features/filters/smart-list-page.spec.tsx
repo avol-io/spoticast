@@ -6,6 +6,7 @@ import { emptyCriteria } from '../../lib/filters/engine';
 import { queryClient } from '../../lib/query/query-client';
 import { useFilters } from '../../lib/storage/filters';
 import { libraryKeys } from '../library/queries';
+import * as controller from '../player/player-controller';
 import * as smartLists from './smart-lists';
 
 import SmartListPage from './smart-list-page';
@@ -90,6 +91,13 @@ describe('SmartListPage', () => {
       items.map((li) => within(li).getByRole('heading').textContent),
     ).toEqual(['Episode c', 'Episode a']);
     expect(screen.getByText(/2 episodes/)).toBeInTheDocument();
+  });
+
+  it('plays all matching episodes', async () => {
+    const play = vi.spyOn(controller, 'playAll').mockResolvedValue();
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Play all' }));
+    expect(play.mock.calls[0][0].map((ep) => ep.id)).toEqual(['c', 'a']);
   });
 
   it('deletes the smart playlist and its Spotify copy', async () => {

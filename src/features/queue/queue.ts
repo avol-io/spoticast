@@ -184,6 +184,25 @@ export function moveToHead(episode: Episode) {
   return serial(() => placeAt(episode, 0));
 }
 
+/** Puts `episodes` at the head of Up Next, in order, without duplicates. */
+export function prependToQueue(episodes: Episode[]) {
+  return serial(async () => {
+    const head = [...new Map(episodes.map((ep) => [ep.uri, ep])).values()];
+    const uris = new Set(head.map((ep) => ep.uri));
+    const { episodes: queued } = await currentQueue();
+    const duplicates = queued
+      .filter((ep) => uris.has(ep.uri))
+      .map((ep) => ep.uri);
+    await mutate(
+      (list) => [...head, ...list.filter((ep) => !uris.has(ep.uri))],
+      async (id) => {
+        if (duplicates.length) await removePlaylistItems(id, duplicates);
+        await addPlaylistItems(id, [...uris], 0);
+      },
+    );
+  });
+}
+
 export function removeFromQueue(uri: string, { silent = false } = {}) {
   return serial(async () => {
     const { episodes } = await currentQueue();

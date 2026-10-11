@@ -10,6 +10,8 @@ import {
 import { useQueueStore } from '../queue/queue-store';
 import type { NowPlaying } from './playback';
 import {
+  PLAY_ALL_LIMIT,
+  playAll,
   playEpisode,
   resetQueueSync,
   setNowPlaying,
@@ -156,5 +158,48 @@ describe('Up Next sync', () => {
     setNowPlaying(playing('b', { positionMs: 0 }));
     await vi.advanceTimersByTimeAsync(2500);
     expect(play).not.toHaveBeenCalled();
+  });
+});
+
+describe('playAll', () => {
+  beforeEach(() => {
+    resetQueuePlaylistCache();
+    resetQueueSync();
+    useQueueStore.setState({ playlistId: 'pl', userId: 'me' });
+    vi.spyOn(endpoints, 'libraryContains').mockResolvedValue([true]);
+    vi.spyOn(endpoints, 'getPlaybackState').mockReturnValue(
+      new Promise(() => undefined),
+    );
+    queryClient.setQueryData<QueueData>(queueKey, {
+      episodes: [ep('a')],
+      otherCount: 0,
+    });
+    usePlayer.setState({ nowPlaying: playing('a', { paused: true }) });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    queryClient.clear();
+    usePlayer.setState({ nowPlaying: null });
+  });
+
+  it('queues at most the limit and plays the first episode', async () => {
+    const add = vi
+      .spyOn(endpoints, 'addPlaylistItems')
+      .mockResolvedValue({ snapshot_id: 's' });
+    const play = vi.spyOn(endpoints, 'startPlayback').mockResolvedValue();
+    const many = Array.from({ length: PLAY_ALL_LIMIT + 5 }, (_, i) =>
+      ep(`e${i}`),
+    );
+    await playAll(many);
+    expect(add.mock.calls[0][1]).toHaveLength(PLAY_ALL_LIMIT);
+    expect(play).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deviceId: 'speaker',
+        contextUri: 'spotify:playlist:pl',
+        offsetUri: 'spotify:episode:e0',
+        positionMs: 5000,
+      }),
+    );
   });
 });

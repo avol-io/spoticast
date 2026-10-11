@@ -3,6 +3,7 @@ import {
   ExternalLink,
   MoreVertical,
   Pencil,
+  Play,
   SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ import { isVideoShow } from '../../lib/episodes';
 import { useFilters, type SmartList } from '../../lib/storage/filters';
 import { toast } from '../../lib/storage/toasts';
 import EpisodeActions from '../player/episode-actions';
+import { playAll } from '../player/player-controller';
 import EpisodeRow from '../podcast/episode-row';
 import FilterSummary from './filter-summary';
 import SmartListEditor from './smart-list-editor';
@@ -105,6 +107,15 @@ export function SmartListPage() {
             {loading ? '…' : t('smart.episodes', { count: episodes.length })} ·{' '}
             {t('smart.scopeHint')}
           </p>
+          <button
+            type="button"
+            disabled={loading || episodes.length === 0}
+            onClick={() => void playAll(episodes)}
+            className="flex items-center gap-1.5 self-start rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-fg disabled:opacity-40"
+          >
+            <Play className="size-4 fill-current" aria-hidden />
+            {t('smart.playAll')}
+          </button>
           {!loading && episodes.length === 0 ? (
             <EmptyState
               icon={<SlidersHorizontal />}
