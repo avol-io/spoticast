@@ -56,6 +56,23 @@ describe('SmartListEditor', () => {
     expect(onSaved).toHaveBeenCalled();
   });
 
+  it('filters podcasts by name and lists the selected ones first', async () => {
+    renderEditor(vi.fn(), { ...newSmartList(), id: 'l1', showIds: ['s2'] });
+    const names = () =>
+      screen
+        .getAllByRole('checkbox')
+        .map((box) => box.closest('label')?.textContent);
+    expect(names()).toEqual(['News', 'Tech Talk']);
+    // Ticking doesn't reorder until the search changes.
+    await userEvent.click(screen.getByRole('checkbox', { name: 'News' }));
+    expect(names()).toEqual(['News', 'Tech Talk']);
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: 'Search your podcasts' }),
+      'tech',
+    );
+    expect(names()).toEqual(['Tech Talk']);
+  });
+
   it('syncs to Spotify by default', async () => {
     renderEditor();
     await userEvent.type(screen.getByLabelText('Name'), 'Morning');

@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import Sheet from '../../app/ui/sheet';
 import Switch from '../../app/ui/switch';
 import { pickImage } from '../../lib/episodes';
-import { emptyCriteria, type EpisodeSort } from '../../lib/filters/engine';
+import {
+  emptyCriteria,
+  fold,
+  type EpisodeSort,
+} from '../../lib/filters/engine';
 import { encodeSmartList } from '../../lib/filters/smart-list-codec';
 import {
   newSmartListId,
@@ -50,12 +54,25 @@ export function SmartListEditor({
   const saveSmartList = useFilters((s) => s.saveSmartList);
   const saved = useSavedShows();
   const [draft, setDraft] = useState<SmartList | null>(list);
+  const [podcastQuery, setPodcastQuery] = useState('');
+  // Selected podcasts go on top when the sheet opens or the search changes,
+  // not on every tick, so rows don't jump under the finger.
+  const [onTop, setOnTop] = useState<string[]>(list?.showIds ?? []);
   const ids = { name: useId(), sort: useId() };
 
-  useEffect(() => setDraft(list), [list]);
+  useEffect(() => {
+    setDraft(list);
+    setPodcastQuery('');
+    setOnTop(list?.showIds ?? []);
+  }, [list]);
   if (!draft) return null;
   const set = (patch: Partial<SmartList>) => setDraft({ ...draft, ...patch });
-  const shows = saved.data?.map((s) => s.show) ?? [];
+  const query = fold(podcastQuery.trim());
+  const shows = (saved.data?.map((s) => s.show) ?? [])
+    .filter((show) => !query || fold(show.name).includes(query))
+    .sort(
+      (a, b) => Number(onTop.includes(b.id)) - Number(onTop.includes(a.id)),
+    );
 
   const toggleShow = (id: string) => {
     const current = draft.showIds ?? [];
@@ -123,29 +140,42 @@ export function SmartListEditor({
             onChange={(all) => set({ showIds: all ? null : [] })}
           />
           {draft.showIds !== null && (
-            <ul
-              aria-label={t('smart.choosePodcasts')}
-              className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-xl bg-surface-2 p-2"
-            >
-              {shows.map((show) => (
-                <li key={show.id}>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-surface-3">
-                    <input
-                      type="checkbox"
-                      checked={draft.showIds?.includes(show.id) ?? false}
-                      onChange={() => toggleShow(show.id)}
-                      className="size-4 accent-[var(--brand)]"
-                    />
-                    <img
-                      src={pickImage(show.images, 64)}
-                      alt=""
-                      className="size-8 rounded-md object-cover"
-                    />
-                    <span className="truncate text-sm">{show.name}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
+            <>
+              <input
+                type="search"
+                value={podcastQuery}
+                aria-label={t('smart.searchPodcasts')}
+                placeholder={t('smart.searchPodcasts')}
+                onChange={(e) => {
+                  setPodcastQuery(e.target.value);
+                  setOnTop(draft.showIds ?? []);
+                }}
+                className={inputClass}
+              />
+              <ul
+                aria-label={t('smart.choosePodcasts')}
+                className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-xl bg-surface-2 p-2"
+              >
+                {shows.map((show) => (
+                  <li key={show.id}>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-surface-3">
+                      <input
+                        type="checkbox"
+                        checked={draft.showIds?.includes(show.id) ?? false}
+                        onChange={() => toggleShow(show.id)}
+                        className="size-4 accent-[var(--brand)]"
+                      />
+                      <img
+                        src={pickImage(show.images, 64)}
+                        alt=""
+                        className="size-8 rounded-md object-cover"
+                      />
+                      <span className="truncate text-sm">{show.name}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
 

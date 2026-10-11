@@ -35,7 +35,8 @@ export function isEmptyCriteria(c: FilterCriteria): boolean {
   );
 }
 
-const fold = (value: string) =>
+/** Lowercases and strips accents, for forgiving text matches. */
+export const fold = (value: string) =>
   value
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')

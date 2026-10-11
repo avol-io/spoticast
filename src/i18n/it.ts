@@ -273,6 +273,7 @@ export const it: Dictionary = {
     podcasts: 'Podcast',
     allPodcasts: 'Tutti i podcast seguiti',
     choosePodcasts: 'Scegli i podcast',
+    searchPodcasts: 'Cerca tra i tuoi podcast',
     includeArchived: 'Includi gli episodi archiviati',
     sort: 'Ordine',
     sortNewest: 'Più recenti',

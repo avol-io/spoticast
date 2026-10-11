@@ -267,6 +267,7 @@ export const en = {
     podcasts: 'Podcasts',
     allPodcasts: 'All followed podcasts',
     choosePodcasts: 'Choose podcasts',
+    searchPodcasts: 'Search your podcasts',
     includeArchived: 'Include archived episodes',
     sort: 'Order',
     sortNewest: 'Newest first',
