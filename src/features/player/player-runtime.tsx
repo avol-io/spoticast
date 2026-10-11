@@ -10,6 +10,7 @@ import {
   skip,
   startPolling,
   togglePlay,
+  watchQueue,
 } from './player-controller';
 import { usePlayer } from './player-store';
 
@@ -102,15 +103,22 @@ function useArchiveSync() {
   }, [pendingCount, sdkReady, paused]);
 }
 
-/** Starts the player, device polling and the Up Next playlist; renders nothing. */
+/**
+ * Starts the player, device polling, the Up Next playlist and its sync with
+ * the device; renders nothing.
+ */
 export function PlayerRuntime() {
   useEffect(() => {
     void initPlayer();
     const stopPolling = startPolling();
+    const stopWatching = watchQueue();
     ensureQueuePlaylist()
       .then(() => pruneFinishedFromQueue())
       .catch(() => undefined);
-    return stopPolling;
+    return () => {
+      stopPolling();
+      stopWatching();
+    };
   }, []);
   useMediaSession();
   useArchiveSync();

@@ -11,6 +11,8 @@ describe('PlayerRuntime', () => {
     const init = vi.spyOn(controller, 'initPlayer').mockResolvedValue();
     const stop = vi.fn();
     vi.spyOn(controller, 'startPolling').mockReturnValue(stop);
+    const stopWatching = vi.fn();
+    vi.spyOn(controller, 'watchQueue').mockReturnValue(stopWatching);
     const ensure = vi
       .spyOn(queue, 'ensureQueuePlaylist')
       .mockResolvedValue('pl');
@@ -20,5 +22,6 @@ describe('PlayerRuntime', () => {
     expect(ensure).toHaveBeenCalledTimes(1);
     unmount();
     expect(stop).toHaveBeenCalled();
+    expect(stopWatching).toHaveBeenCalled();
   });
 });

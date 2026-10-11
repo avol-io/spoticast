@@ -18,10 +18,13 @@ import { libraryKeys } from '../library/queries';
 import {
   ensureQueuePlaylist,
   moveToHead,
+  playlistUri,
   queueKey,
+  queueSettled,
   removeFromQueue,
   type QueueData,
 } from '../queue/queue';
+import { queueDrift, upcoming } from '../queue/queue-sync';
 import {
   currentPosition,
   finishedEpisode,
@@ -80,6 +83,8 @@ export function setNowPlaying(next: NowPlaying | null) {
   usePlayer.setState({ nowPlaying: next });
   const finished = finishedEpisode(prev, next);
   if (finished) onEpisodeFinished(finished);
+  if (prev && next && prev.uri !== next.uri && inUpNext(next))
+    onUpNextTransition(prev.uri);
 }
 
 function patchNowPlaying(patch: Partial<NowPlaying>) {
@@ -246,6 +251,155 @@ async function targetDevice(): Promise<string | undefined> {
   return (devices.find((d) => d.is_active) ?? devices[0])?.id ?? undefined;
 }
 
+// --- Up Next sync -------------------------------------------------------------
+// A device keeps the Up Next order it loaded with the playlist context (see
+// features/queue/queue-sync), on the SDK and on Connect alike: when the queue
+// changes under it, the context is started again where it is.
+
+/** Up Next as the device loaded it; null until known. */
+let loadedOrder: string[] | null = null;
+/** Up Next changed: reload at the next episode change or resume. */
+let queueDirty = false;
+/** Context starts in flight: their state events are not drift. */
+let starting = 0;
+let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
+
+const queueEpisodes = () =>
+  queryClient.getQueryData<QueueData>(queueKey)?.episodes;
+
+const inUpNext = (np: NowPlaying | null): np is NowPlaying =>
+  !!np?.contextUri && np.contextUri === playlistUri();
+
+const resumePosition = (episode: Episode) => {
+  const resume = episode.resume_point;
+  return resume && !resume.fully_played ? resume.resume_position_ms : 0;
+};
+
+/** Plays Up Next from `uri`, remembering the order the device loads. */
+async function startUpNext(options: {
+  deviceId: string | undefined;
+  uri: string;
+  positionMs: number;
+}) {
+  const playlistId = await ensureQueuePlaylist();
+  await queueSettled();
+  starting++;
+  try {
+    const order = (queueEpisodes() ?? []).map((ep) => ep.uri);
+    await startPlayback({
+      deviceId: options.deviceId,
+      contextUri: `spotify:playlist:${playlistId}`,
+      offsetUri: options.uri,
+      positionMs: options.positionMs,
+    });
+    loadedOrder = order;
+    queueDirty = false;
+  } finally {
+    starting--;
+  }
+}
+
+/** Reloads the context on the current episode, keeping the position. */
+const reloadUpNext = (np: NowPlaying) =>
+  guarded(() =>
+    startUpNext({
+      deviceId: np.deviceId ?? undefined,
+      uri: np.uri,
+      positionMs: currentPosition(np),
+    }),
+  );
+
+function reconcileQueue() {
+  const np = usePlayer.getState().nowPlaying;
+  const episodes = queueEpisodes();
+  if (archiveSyncing || !inUpNext(np) || !episodes) return;
+  if (starting) return scheduleReconcile();
+  const queue = episodes.map((ep) => ep.uri);
+  // Already playing when the app opened: assume it loaded the current order.
+  if (!loadedOrder) {
+    loadedOrder = queue;
+    return;
+  }
+  const drift = queueDrift(loadedOrder, queue, np.uri);
+  if (drift === 'none') {
+    queueDirty = false;
+    return;
+  }
+  queueDirty = true;
+  // Only a changed next episode can't wait; a removed current one can't be
+  // reloaded on: the next episode change takes care of both.
+  if (drift === 'now' && !np.paused && queue.includes(np.uri))
+    void reloadUpNext(np);
+}
+
+function scheduleReconcile() {
+  clearTimeout(reconcileTimer);
+  reconcileTimer = setTimeout(
+    () => void queueSettled().then(reconcileQueue),
+    2000,
+  );
+}
+
+/**
+ * The device moved on from `prevUri` with a stale order: start what Up Next
+ * has after it, or reload the right episode with the new order.
+ */
+function onUpNextTransition(prevUri: string) {
+  if (!queueDirty || starting) return;
+  // The finished episode is being removed: wait for it.
+  void queueSettled().then(() => {
+    const np = usePlayer.getState().nowPlaying;
+    const episodes = queueEpisodes();
+    if (archiveSyncing || starting || !inUpNext(np) || !episodes) return;
+    const queue = episodes.map((ep) => ep.uri);
+    const wanted = upcoming(queue, prevUri)[0];
+    if (!wanted) {
+      void pause();
+    } else if (wanted !== np.uri) {
+      const episode = episodes.find((ep) => ep.uri === wanted);
+      if (!episode) return;
+      void guarded(() =>
+        startUpNext({
+          deviceId: np.deviceId ?? undefined,
+          uri: wanted,
+          positionMs: resumePosition(episode),
+        }),
+      );
+    } else if (
+      !loadedOrder ||
+      queueDrift(loadedOrder, queue, np.uri) !== 'none'
+    ) {
+      void reloadUpNext(np);
+    } else {
+      queueDirty = false;
+    }
+  });
+}
+
+/** Keeps the device in line with Up Next edits; returns the cleanup. */
+export function watchQueue() {
+  const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+    if (
+      event.type === 'updated' &&
+      event.action.type === 'success' &&
+      event.query.queryKey[0] === queueKey[0]
+    )
+      scheduleReconcile();
+  });
+  return () => {
+    unsubscribe();
+    clearTimeout(reconcileTimer);
+  };
+}
+
+/** Test hook: forget what the device loaded. */
+export function resetQueueSync() {
+  loadedOrder = null;
+  queueDirty = false;
+  starting = 0;
+  clearTimeout(reconcileTimer);
+}
+
 /**
  * Plays an episode Pocket Casts style: it moves to the head of Up Next and
  * the Spoticast playlist plays from there, so the queue continues after it.
@@ -258,14 +412,10 @@ export function playEpisode(episode: Episode): Promise<void> {
   if (np?.uri === episode.uri) return togglePlay();
   return guarded(async () => {
     await moveToHead(episode);
-    const playlistId = await ensureQueuePlaylist();
-    const resume = episode.resume_point;
-    await startPlayback({
+    await startUpNext({
       deviceId: await targetDevice(),
-      contextUri: `spotify:playlist:${playlistId}`,
-      offsetUri: episode.uri,
-      positionMs:
-        resume && !resume.fully_played ? resume.resume_position_ms : 0,
+      uri: episode.uri,
+      positionMs: resumePosition(episode),
     });
   });
 }
@@ -279,6 +429,8 @@ export function togglePlay(): Promise<void> {
     return head ? playEpisode(head) : Promise.resolve();
   }
   patchNowPlaying({ paused: !np.paused, positionMs: currentPosition(np) });
+  // Up Next changed while paused: resume with the new order.
+  if (np.paused && queueDirty && inUpNext(np)) return reloadUpNext(np);
   return onTarget(np, {
     local: (sdk) => sdk.togglePlay(),
     remote: (deviceId) =>
@@ -306,12 +458,33 @@ export function skip(seconds: number) {
   return np ? seekTo(currentPosition(np) + seconds * 1000) : Promise.resolve();
 }
 
+const nextInQueue = (uri: string) => {
+  const episodes = queueEpisodes() ?? [];
+  const wanted = upcoming(
+    episodes.map((ep) => ep.uri),
+    uri,
+  )[0];
+  return episodes.find((ep) => ep.uri === wanted) ?? null;
+};
+
 /** Skips to the next queued episode; the skipped one leaves Up Next. */
 export function next() {
   userAction();
   const np = usePlayer.getState().nowPlaying;
   if (!np) return Promise.resolve();
   const skipped = np.uri;
+  // With a stale order the device would skip to the wrong episode.
+  const following = queueDirty && inUpNext(np) ? nextInQueue(np.uri) : null;
+  if (following) {
+    return guarded(async () => {
+      await startUpNext({
+        deviceId: np.deviceId ?? undefined,
+        uri: following.uri,
+        positionMs: resumePosition(following),
+      });
+      await removeFromQueue(skipped, { silent: true });
+    });
+  }
   return guarded(async () => {
     await onTarget(np, {
       local: (sdk) => sdk.nextTrack(),

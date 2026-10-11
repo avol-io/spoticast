@@ -113,6 +113,11 @@ function serial<T>(operation: () => Promise<T>): Promise<T> {
   return run;
 }
 
+/** Resolves once the queue writes issued so far reached Spotify. */
+export function queueSettled(): Promise<void> {
+  return chain.then(() => undefined);
+}
+
 /** Applies an optimistic change, rolls it back and resyncs on failure. */
 async function mutate(
   optimistic: (episodes: Episode[]) => Episode[],
