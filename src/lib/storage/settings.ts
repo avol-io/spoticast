@@ -32,7 +32,7 @@ export interface SettingsState {
 export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
-      theme: 'dark',
+      theme: 'auto',
       language: 'auto',
       skipBackSeconds: 10,
       skipForwardSeconds: 30,

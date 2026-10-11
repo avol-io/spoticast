@@ -20,11 +20,14 @@ export function useApplyPreferences() {
       const bg = getComputedStyle(document.documentElement)
         .getPropertyValue('--bg')
         .trim();
+      // One meta per system scheme: both get the chosen theme's color.
       document
-        .querySelector('meta[name="theme-color"]')
-        ?.setAttribute(
-          'content',
-          bg || (resolved === 'dark' ? '#0f1115' : '#f6f7f9'),
+        .querySelectorAll('meta[name="theme-color"]')
+        .forEach((meta) =>
+          meta.setAttribute(
+            'content',
+            bg || (resolved === 'dark' ? '#0f1115' : '#f6f7f9'),
+          ),
         );
     };
     apply();

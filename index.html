@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>Spoticast</title>
@@ -8,7 +8,33 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0f1115" />
+    <meta
+      name="theme-color"
+      content="#0f1115"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#f6f7f9"
+      media="(prefers-color-scheme: light)"
+    />
+    <script>
+      // Theme before the first paint, as in useApplyPreferences.
+      (function () {
+        var theme = 'auto';
+        try {
+          var stored = localStorage.getItem('spoticast.settings');
+          theme = (stored && JSON.parse(stored).state.theme) || theme;
+        } catch (e) {
+          // Blocked storage or a broken value: follow the system.
+        }
+        if (theme !== 'dark' && theme !== 'light')
+          theme = matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
     <meta name="description" content="Podcast client for Spotify" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta
