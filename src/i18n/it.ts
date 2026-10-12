@@ -15,7 +15,7 @@ export const it: Dictionary = {
     settings: 'Impostazioni',
   },
   auth: {
-    tagline: 'I tuoi podcast Spotify, alla Pocket Casts.',
+    tagline: 'I tuoi podcast Spotify, a modo tuo.',
     login: 'Accedi con Spotify',
     premiumNote:
       "La riproduzione nell'app richiede Spotify Premium. Finché l'app è in Development Mode su Spotify, possono accedere solo gli utenti autorizzati.",
@@ -63,6 +63,26 @@ export const it: Dictionary = {
     releaseNotes: 'Note di rilascio',
     whatsNew: 'Novità',
     stopsPlayback: 'La riproduzione in questo browser si fermerà.',
+  },
+  feedback: {
+    section: 'Feedback (beta)',
+    hint: "Qualcosa non ha funzionato? Invia cosa è successo insieme al log recente dell'app.",
+    report: 'Segnala un problema',
+    title: 'Segnala un problema',
+    intro:
+      "Si apre la tua app di posta con un messaggio per {{email}} che contiene la tua descrizione, lo stato dell'app e gli eventi degli ultimi {{seconds}} secondi. Puoi rileggerlo prima di inviarlo.",
+    describe: 'Cosa è successo?',
+    placeholder:
+      'Es. tornando dal background la riproduzione si è fermata sul telefono…',
+    preview: 'Cosa verrà inviato',
+    send: 'Invia email',
+    copy: 'Copia log',
+    copyHint:
+      "Se l'app di posta taglia il messaggio, copia il log e incollalo.",
+    copied: 'Log copiato',
+    copyFailed: 'Impossibile copiare il log',
+    cancel: 'Annulla',
+    toastAction: 'Segnala',
   },
   install: {
     title: 'Installa Spoticast',

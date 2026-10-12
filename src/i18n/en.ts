@@ -13,7 +13,7 @@ export const en = {
     settings: 'Settings',
   },
   auth: {
-    tagline: 'Your Spotify podcasts, the Pocket Casts way.',
+    tagline: 'Your Spotify podcasts, your way.',
     login: 'Log in with Spotify',
     premiumNote:
       'Playback inside the app requires Spotify Premium. While the app is in Spotify Development Mode, only users added to its allow-list can log in.',
@@ -61,6 +61,25 @@ export const en = {
     releaseNotes: 'Release notes',
     whatsNew: "What's new",
     stopsPlayback: 'Playback in this browser will stop.',
+  },
+  feedback: {
+    section: 'Feedback (beta)',
+    hint: "Something went wrong? Send what happened along with the app's recent log.",
+    report: 'Report a problem',
+    title: 'Report a problem',
+    intro:
+      'Your mail app opens with a message to {{email}} holding your description, the app state and the events of the last {{seconds}} seconds. You can read it before sending.',
+    describe: 'What happened?',
+    placeholder: 'E.g. back from the background, playback stopped on my phone…',
+    preview: 'What will be sent',
+    send: 'Send email',
+    copy: 'Copy log',
+    copyHint:
+      'If your mail app cuts the message, copy the log and paste it in.',
+    copied: 'Log copied',
+    copyFailed: "Couldn't copy the log",
+    cancel: 'Cancel',
+    toastAction: 'Report',
   },
   install: {
     title: 'Install Spoticast',

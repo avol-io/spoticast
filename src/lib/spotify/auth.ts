@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { diag } from '../diagnostics/log';
 
 const AUTHORIZE_URL = 'https://accounts.spotify.com/authorize';
 const TOKEN_URL = 'https://accounts.spotify.com/api/token';
@@ -185,15 +186,26 @@ let refreshing: Promise<Tokens> | null = null;
 
 async function refresh(current: Tokens): Promise<Tokens> {
   // Concurrent callers share one refresh request.
+  if (!refreshing)
+    diag('auth', 'refresh', {
+      expiredS: Math.round((Date.now() - current.expiresAt) / 1000),
+    });
   refreshing ??= requestToken(
     { grant_type: 'refresh_token', refresh_token: current.refreshToken },
     current.refreshToken,
   )
     .then((tokens) => {
       useAuth.getState().setTokens(tokens);
+      diag('auth', 'refreshed', {
+        expiresInS: Math.round((tokens.expiresAt - Date.now()) / 1000),
+      });
       return tokens;
     })
     .catch((err) => {
+      diag('auth', 'refresh failed', {
+        name: err instanceof Error ? err.name : undefined,
+        message: err instanceof Error ? err.message : String(err),
+      });
       if (err instanceof AuthError) logout();
       throw err;
     })
@@ -216,5 +228,6 @@ export async function getAccessToken({
 }
 
 export function logout(): void {
+  diag('auth', 'logout');
   useAuth.getState().setTokens(null);
 }

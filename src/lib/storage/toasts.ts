@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { diag } from '../diagnostics/log';
 
 export interface Toast {
   id: number;
@@ -30,6 +31,7 @@ export function toast(
   }: Partial<Omit<Toast, 'id' | 'message'>> & { duration?: number } = {},
 ) {
   const id = nextId++;
+  diag('ui', 'toast', { tone, message });
   useToasts.setState((s) => ({
     toasts: [...s.toasts.slice(-2), { id, message, tone, action }],
   }));

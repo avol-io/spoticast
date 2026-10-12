@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  Bug,
   ChevronDown,
   ListMusic,
   Pause,
@@ -21,6 +22,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import IconButton from '../../app/ui/icon-button';
+import { DIAG_ENABLED } from '../../lib/diagnostics/config';
+import { openFeedback } from '../feedback/feedback-store';
 import Sheet from '../../app/ui/sheet';
 import SpotifyIcon from '../../app/ui/spotify-icon';
 import { useDominantColor } from '../../lib/color/dominant';
@@ -385,6 +388,17 @@ function PlayerSheet({
               <IconButton label={t('player.close')} onClick={closeFullPlayer}>
                 <ChevronDown />
               </IconButton>
+              {DIAG_ENABLED && (
+                <IconButton
+                  label={t('feedback.report')}
+                  onClick={() => {
+                    closeFullPlayer();
+                    openFeedback('player');
+                  }}
+                >
+                  <Bug />
+                </IconButton>
+              )}
             </div>
             {isEpisode && (
               <div

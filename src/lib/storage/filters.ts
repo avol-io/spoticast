@@ -14,7 +14,7 @@ export interface FilterPreset {
   criteria: FilterCriteria;
 }
 
-/** Pocket Casts style filter across podcasts. */
+/** Smart playlist: a filter across podcasts. */
 export interface SmartList {
   id: string;
   name: string;

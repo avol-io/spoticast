@@ -1,4 +1,4 @@
-import { Archive, Check, Download, LogOut, RefreshCw } from 'lucide-react';
+import { Archive, Bug, Check, Download, LogOut, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -17,6 +17,9 @@ import MarketSelect from '../search/market-select';
 import { selectPlayingHere, usePlayer } from '../player/player-store';
 import { useSettings } from '../../lib/storage/settings';
 import { APP_BUILD, IS_BETA } from '../../lib/build-info';
+import { DIAG_ENABLED } from '../../lib/diagnostics/config';
+import { clearLog } from '../../lib/diagnostics/log';
+import { openFeedback } from '../feedback/feedback-store';
 
 const SKIP_BACK = [5, 10, 15, 30];
 const SKIP_FORWARD = [15, 30, 45, 60];
@@ -275,10 +278,32 @@ export function SettingsPage() {
 
           <InstallSection />
 
+          {DIAG_ENABLED && (
+            <Section title={t('feedback.section')}>
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <p className="min-w-0 flex-1 text-sm text-fg-muted">
+                  {t('feedback.hint')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openFeedback('settings')}
+                  className="inline-flex items-center gap-2 rounded-full bg-surface-3 px-3 py-1.5 text-sm font-semibold"
+                >
+                  <Bug className="size-4" aria-hidden />
+                  {t('feedback.report')}
+                </button>
+              </div>
+            </Section>
+          )}
+
           <Section title={t('settings.account')}>
             <button
               type="button"
-              onClick={logout}
+              onClick={() => {
+                // A new account must not send this one's log.
+                clearLog();
+                logout();
+              }}
               className="flex w-full items-center gap-3 px-4 py-3 font-medium text-danger hover:bg-surface-2"
             >
               <LogOut className="size-5" aria-hidden />

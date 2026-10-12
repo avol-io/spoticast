@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { episodeKey } from '../episode/open-episode';
+import { closeFeedback, useFeedback } from '../feedback/feedback-store';
 import { libraryKeys } from '../library/queries';
 import { queueKey, type QueueData } from '../queue/queue';
 import { useQueueStore } from '../queue/queue-store';
@@ -12,6 +13,14 @@ import * as controller from './player-controller';
 import { usePlayer } from './player-store';
 
 import FullPlayer from './full-player';
+
+const diagnostics = vi.hoisted(() => ({ enabled: true }));
+vi.mock('../../lib/diagnostics/config', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  get DIAG_ENABLED() {
+    return diagnostics.enabled;
+  },
+}));
 
 const np = {
   uri: 'spotify:episode:e',
@@ -63,6 +72,25 @@ describe('FullPlayer', () => {
     queued = [];
     vi.restoreAllMocks();
     usePlayer.setState({ nowPlaying: null, fullPlayerOpen: false });
+    diagnostics.enabled = true;
+    closeFeedback();
+  });
+
+  it('reports a problem from the player (beta)', async () => {
+    renderPlayer();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Report a problem' }),
+    );
+    expect(useFeedback.getState().open).toBe(true);
+    expect(usePlayer.getState().fullPlayerOpen).toBe(false);
+  });
+
+  it('has no report button in production', () => {
+    diagnostics.enabled = false;
+    renderPlayer();
+    expect(
+      screen.queryByRole('button', { name: 'Report a problem' }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows the episode with controls and a link to the show', async () => {

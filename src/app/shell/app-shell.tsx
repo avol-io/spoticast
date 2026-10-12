@@ -1,12 +1,14 @@
 import { lazy, Suspense, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, ScrollRestoration } from 'react-router-dom';
+import FeedbackSheet from '../../features/feedback/feedback-sheet';
 import AddToPlaylistSheet from '../../features/filters/add-to-playlist-sheet';
 import SmartPlaylistsRuntime from '../../features/filters/smart-playlists-runtime';
 import MiniPlayer from '../../features/player/mini-player';
 import PlayerRuntime from '../../features/player/player-runtime';
 import { usePlayer } from '../../features/player/player-store';
 import SelectionBar from '../../features/selection/selection-bar';
+import { DIAG_ENABLED } from '../../lib/diagnostics/config';
 import { useSelection } from '../../features/selection/selection-store';
 import Toaster from '../ui/toaster';
 import BottomNav from './bottom-nav';
@@ -96,6 +98,8 @@ export function AppShell() {
       <Suspense fallback={null}>
         <EpisodeCard />
       </Suspense>
+      {/* Beta and dev only: production builds drop it. */}
+      {DIAG_ENABLED && <FeedbackSheet />}
       <AddToPlaylistSheet />
       <PlayerRuntime />
       <SmartPlaylistsRuntime />

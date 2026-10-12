@@ -1,3 +1,4 @@
+import { clearLog, snapshotLog } from '../../lib/diagnostics/log';
 import { queryClient } from '../../lib/query/query-client';
 import { SpotifyApiError } from '../../lib/spotify/client';
 import * as endpoints from '../../lib/spotify/endpoints';
@@ -16,6 +17,7 @@ import {
   playAll,
   playEpisode,
   resetQueueSync,
+  seekTo,
   setNowPlaying,
   togglePlay,
   watchQueue,
@@ -233,6 +235,58 @@ describe('playAll', () => {
         offsetUri: 'spotify:episode:e0',
         positionMs: 5000,
       }),
+    );
+  });
+});
+
+describe('diagnostics log', () => {
+  beforeEach(() => {
+    clearLog();
+    vi.spyOn(endpoints, 'getPlaybackState').mockReturnValue(
+      new Promise(() => undefined),
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    usePlayer.setState({ nowPlaying: null });
+  });
+
+  it('logs commands sent to a Connect device', async () => {
+    usePlayer.setState({ nowPlaying: playing('a') });
+    vi.spyOn(endpoints, 'seekPlayback').mockResolvedValue();
+    await seekTo(120_000);
+    expect(snapshotLog()).toContainEqual(
+      expect.objectContaining({
+        a: 'cmd',
+        e: 'seek',
+        d: expect.objectContaining({
+          target: 'remote',
+          device: 'speaker',
+          to: 120,
+        }),
+      }),
+    );
+  });
+
+  it('logs the retry when the device is gone', async () => {
+    usePlayer.setState({
+      nowPlaying: playing('a', { paused: true, contextUri: null }),
+    });
+    vi.spyOn(endpoints, 'startPlayback')
+      .mockRejectedValueOnce(new SpotifyApiError(404, 'Device not found'))
+      .mockResolvedValue();
+    vi.spyOn(endpoints, 'getDevices').mockResolvedValue([
+      { id: 'phone', name: 'Phone', type: 'Smartphone' } as Device,
+    ]);
+    await togglePlay();
+    const events = snapshotLog().map((entry) => [entry.e, entry.d?.device]);
+    expect(events).toEqual(
+      expect.arrayContaining([
+        ['resume', 'speaker'],
+        ['device not found', 'speaker'],
+        ['retry', 'phone'],
+      ]),
     );
   });
 });

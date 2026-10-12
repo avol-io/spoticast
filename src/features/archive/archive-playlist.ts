@@ -1,4 +1,5 @@
 import i18n from '../../i18n';
+import { diag } from '../../lib/diagnostics/log';
 import { getAccessToken, useAuth } from '../../lib/spotify/auth';
 import { SpotifyApiError } from '../../lib/spotify/client';
 import {
@@ -122,6 +123,7 @@ export function syncArchive(): Promise<void> {
     await flushNow();
     const since = Date.now() - SETTLE_MS;
     const items = await getPlaylistItems(await ensureArchivePlaylist());
+    diag('archive', 'shared archive read', { items: items.length });
     useArchiveStore.getState().applyRemote(
       items.flatMap((entry) =>
         entry.item?.type === 'episode'

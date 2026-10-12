@@ -114,6 +114,9 @@ jobs:
           # The beta is served from /<repository>/ on GitHub Pages.
           VITE_BASE: ${{ steps.release.outputs.channel == 'beta' && format('/{0}/', github.event.repository.name) || vars.VITE_BASE || '/' }}
           VITE_CHANNEL: ${{ steps.release.outputs.channel }}
+          # Feedback diagnostics (beta only); empty means the default.
+          VITE_DIAG_WINDOW_SECONDS: ${{ vars.DIAG_WINDOW_SECONDS }}
+          VITE_DIAG_MAX_CHARS: ${{ vars.DIAG_MAX_CHARS }}
           APP_VERSION: ${{ steps.release.outputs.tag }}
           APP_RELEASE_URL: ${{ inputs.release_url || format('{0}/{1}/releases/tag/{2}', github.server_url, github.repository, steps.release.outputs.tag) }}
 

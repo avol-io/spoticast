@@ -49,6 +49,13 @@ import {
   type ArchiveSyncDeps,
 } from '../archive/archive-sync';
 import { IS_BETA } from '../../lib/build-info';
+import {
+  diag,
+  type DiagData,
+  shortDevice,
+  shortId,
+  shortName,
+} from '../../lib/diagnostics/log';
 import { loadPlaybackSdk } from './sdk';
 
 export const LOCAL_DEVICE_NAME = IS_BETA ? 'Spoticast Beta' : 'Spoticast';
@@ -66,6 +73,7 @@ let uiBeforeSync: NowPlaying | null = null;
 function userAction() {
   userActed = true;
   if (archiveSyncing) {
+    diag('archive', 'silent sync interrupted');
     archiveSyncing = false;
     void player?.setVolume(volumeBeforeSync);
   }
@@ -73,26 +81,65 @@ function userAction() {
 
 // --- State ------------------------------------------------------------------
 
+/** What plays, compact, for the diagnostics log. */
+const npLog = (np: NowPlaying | null) =>
+  np
+    ? {
+        ep: shortId(np.uri),
+        name: shortName(np.name),
+        paused: np.paused,
+        pos: Math.round(np.positionMs / 1000),
+        device: shortDevice(np.deviceId),
+        local: np.isLocal,
+        upNext: inUpNext(np),
+      }
+    : { ep: null };
+
+const errorLog = (error: unknown) =>
+  error instanceof SpotifyApiError
+    ? { status: error.status, reason: error.reason, message: error.message }
+    : error instanceof Error
+      ? { name: error.name, message: error.message }
+      : { message: String(error) };
+
 function onEpisodeFinished(uri: string) {
   // The SDK event and the API poll can both report the same ending.
   if (lastFinished?.uri === uri && Date.now() - lastFinished.at < 60_000)
     return;
   lastFinished = { uri, at: Date.now() };
+  diag('player', 'finished', { ep: shortId(uri) });
   void removeFromQueue(uri, { silent: true }).catch(() => undefined);
   // Resume points changed: refresh badges and lists.
   void queryClient.invalidateQueries({ queryKey: libraryKeys.episodes() });
 }
 
-export function setNowPlaying(next: NowPlaying | null) {
+export function setNowPlaying(
+  next: NowPlaying | null,
+  source: 'sdk' | 'api' = 'api',
+) {
   if (archiveSyncing) return;
   const prev = usePlayer.getState().nowPlaying;
+  if (
+    prev?.uri !== next?.uri ||
+    prev?.paused !== next?.paused ||
+    prev?.deviceId !== next?.deviceId ||
+    prev?.isLocal !== next?.isLocal ||
+    prev?.contextUri !== next?.contextUri
+  )
+    diag('player', 'state', { src: source, ...npLog(next) });
   usePlayer.setState({ nowPlaying: next });
   const finished = finishedEpisode(prev, next);
   if (finished) onEpisodeFinished(finished);
   if (prev && next && prev.uri !== next.uri && inUpNext(next)) {
     // The device moved on by itself (end, or skipped in another app): the
     // episode it left is done with. A start of ours keeps it queued.
-    if (next.uri === expectedStart) expectedStart = null;
+    const ours = next.uri === expectedStart;
+    diag('player', 'moved on', {
+      from: shortId(prev.uri),
+      to: shortId(next.uri),
+      ours,
+    });
+    if (ours) expectedStart = null;
     else if (inUpNext(prev))
       void removeFromQueue(prev.uri, { silent: true }).catch(() => undefined);
     onUpNextTransition(prev.uri);
@@ -127,6 +174,7 @@ async function guarded(action: () => Promise<void>) {
   try {
     await action();
   } catch (error) {
+    diag('cmd', 'failed', errorLog(error));
     reportPlaybackError(error);
   } finally {
     schedulePoll(1500);
@@ -138,9 +186,11 @@ async function guarded(action: () => Promise<void>) {
 export async function initPlayer() {
   if (player || usePlayer.getState().sdkStatus === 'loading') return;
   usePlayer.setState({ sdkStatus: 'loading' });
+  diag('sdk', 'init');
   try {
     await loadPlaybackSdk();
-  } catch {
+  } catch (error) {
+    diag('sdk', 'load failed', errorLog(error));
     usePlayer.setState({ sdkStatus: 'unavailable' });
     return;
   }
@@ -153,13 +203,15 @@ export async function initPlayer() {
   player = instance;
 
   instance.addListener('ready', ({ device_id }) => {
+    diag('sdk', 'ready', { device: shortDevice(device_id) });
     usePlayer.setState({ sdkStatus: 'ready', localDeviceId: device_id });
     // First run: this browser is the default device.
     const settings = useSettings.getState();
     if (!settings.preferredDevice)
       settings.setPreferredDevice({ kind: 'local' });
   });
-  instance.addListener('not_ready', () => {
+  instance.addListener('not_ready', ({ device_id }) => {
+    diag('sdk', 'not ready', { device: shortDevice(device_id) });
     usePlayer.setState({ sdkStatus: 'loading' });
     // This browser left Spotify Connect: ask where playback is.
     if (usePlayer.getState().nowPlaying?.isLocal) {
@@ -170,13 +222,18 @@ export async function initPlayer() {
   instance.addListener('player_state_changed', (state) => {
     const { localDeviceId, nowPlaying } = usePlayer.getState();
     if (state && localDeviceId) {
-      setNowPlaying(fromSdkState(state, localDeviceId, LOCAL_DEVICE_NAME));
+      setNowPlaying(
+        fromSdkState(state, localDeviceId, LOCAL_DEVICE_NAME),
+        'sdk',
+      );
     } else if (nowPlaying?.isLocal) {
+      diag('sdk', 'state lost', { hasState: !!state });
       // Playback left this browser: find out where it went.
       schedulePoll(500);
     }
   });
   instance.addListener('account_error', (e) => {
+    diag('sdk', 'account error', { message: e.message });
     usePlayer.setState({
       sdkStatus: 'error',
       sdkError: 'player.premiumRequired',
@@ -184,6 +241,7 @@ export async function initPlayer() {
     });
   });
   instance.addListener('initialization_error', (e) => {
+    diag('sdk', 'initialization error', { message: e.message });
     usePlayer.setState({
       sdkStatus: 'unavailable',
       sdkError: 'player.sdkError',
@@ -191,6 +249,7 @@ export async function initPlayer() {
     });
   });
   instance.addListener('authentication_error', (e) => {
+    diag('sdk', 'authentication error', { message: e.message });
     usePlayer.setState({
       sdkStatus: 'error',
       sdkError: 'player.sdkError',
@@ -198,6 +257,7 @@ export async function initPlayer() {
     });
   });
   instance.addListener('playback_error', (e) => {
+    diag('sdk', 'playback error', { message: e.message });
     toast(i18n.t('player.sdkError', { message: e.message }), { tone: 'error' });
   });
 
@@ -234,11 +294,18 @@ export function reconnectSdk(): Promise<string | undefined> {
   if (!player) return Promise.resolve(undefined);
   const sdk = player;
   reconnecting ??= (async () => {
+    diag('sdk', 'reconnect', {
+      device: shortDevice(usePlayer.getState().localDeviceId),
+    });
     usePlayer.setState({ sdkStatus: 'loading', localDeviceId: undefined });
     sdk.disconnect();
     const ready = waitForSdkReady(10_000);
     await sdk.connect();
-    return ready;
+    const id = await ready;
+    diag('sdk', id ? 'reconnected' : 'reconnect timed out', {
+      device: shortDevice(id),
+    });
+    return id;
   })().finally(() => {
     reconnecting = null;
   });
@@ -248,11 +315,23 @@ export function reconnectSdk(): Promise<string | undefined> {
 /** True when Spotify still lists this browser's player. */
 async function sdkRegistered(): Promise<boolean> {
   const { localDeviceId, sdkStatus } = usePlayer.getState();
-  if (!player || sdkStatus !== 'ready' || !localDeviceId) return false;
-  if (await player.getCurrentState().catch(() => null)) return true;
+  if (!player || sdkStatus !== 'ready' || !localDeviceId) {
+    diag('sdk', 'registered', { result: false, sdkStatus });
+    return false;
+  }
+  if (await player.getCurrentState().catch(() => null)) {
+    diag('sdk', 'registered', { result: true, via: 'sdk state' });
+    return true;
+  }
   const devices = await getDevices().catch(() => null);
   // Can't tell (offline): leave it alone.
-  return !devices || devices.some((d) => d.id === localDeviceId);
+  const result = !devices || devices.some((d) => d.id === localDeviceId);
+  diag('sdk', 'registered', {
+    result,
+    via: devices ? 'devices' : 'offline',
+    devices: devices?.length,
+  });
+  return result;
 }
 
 /**
@@ -271,14 +350,23 @@ async function onLiveDevice(
       throw error;
     const devices = await getDevices();
     const { localDeviceId } = usePlayer.getState();
-    if (player && !devices.some((d) => d.id === localDeviceId))
-      await reconnectSdk();
+    const localLost = !devices.some((d) => d.id === localDeviceId);
+    diag('cmd', 'device not found', {
+      device: shortDevice(deviceId),
+      devices: devices.length,
+      localLost,
+    });
+    if (player && localLost) await reconnectSdk();
     const picked = pickPlaybackDevice(
       useSettings.getState().preferredDevice,
       devices.filter((d) => d.id !== deviceId),
       usePlayer.getState().localDeviceId,
     );
-    if (!picked || picked.deviceId === deviceId) throw error;
+    if (!picked || picked.deviceId === deviceId) {
+      diag('cmd', 'no device to retry on');
+      throw error;
+    }
+    diag('cmd', 'retry', { device: shortDevice(picked.deviceId) });
     await run(picked.deviceId);
   }
 }
@@ -299,9 +387,10 @@ async function poll() {
       const state = await getPlaybackState();
       const next = fromApiState(state, usePlayer.getState().localDeviceId);
       // Without SDK state, the API is the only truth (even about here).
-      if (!next?.isLocal || !sdkState) setNowPlaying(next);
-    } catch {
+      if (!next?.isLocal || !sdkState) setNowPlaying(next, 'api');
+    } catch (error) {
       // Offline or rate limited: try again later.
+      diag('api', 'poll failed', errorLog(error));
     }
   }
   schedulePoll();
@@ -332,12 +421,27 @@ const RESUME_CHECK_MS = 5_000;
  * so refresh the token, reconnect this browser's player if Spotify dropped
  * it, re-read where playback is, and refresh devices and Up Next.
  */
-export async function resumeSync({ hiddenMs }: { hiddenMs: number }) {
+export async function resumeSync({
+  hiddenMs,
+  reason,
+}: {
+  hiddenMs: number;
+  reason?: string;
+}) {
+  const startedAt = Date.now();
+  diag('life', 'resume sync', {
+    reason,
+    hiddenS: Number.isFinite(hiddenMs)
+      ? Math.round(hiddenMs / 1000)
+      : 'unknown',
+    archiveSyncing,
+  });
   if (archiveSyncing) return;
   try {
     await getAccessToken();
-  } catch {
+  } catch (error) {
     // Offline: the "online" event brings us back here.
+    diag('life', 'resume sync: no token', errorLog(error));
     return;
   }
   if (hiddenMs >= RESUME_CHECK_MS && player && !(await sdkRegistered()))
@@ -349,6 +453,7 @@ export async function resumeSync({ hiddenMs }: { hiddenMs: number }) {
   await pruneFinishedFromQueue().catch(() => undefined);
   await removePassedEpisodes();
   await syncArchive().catch(() => undefined);
+  diag('life', 'resume sync done', { ms: Date.now() - startedAt });
 }
 
 /** Drops what the device played past while the app was away. */
@@ -357,6 +462,7 @@ async function removePassedEpisodes() {
   if (!loadedOrder || !inUpNext(np)) return;
   const index = loadedOrder.indexOf(np.uri);
   if (index <= 0) return;
+  diag('queue', 'remove passed', { count: index });
   await removeManyFromQueue(loadedOrder.slice(0, index), {
     silent: true,
   }).catch(() => undefined);
@@ -371,11 +477,20 @@ async function removePassedEpisodes() {
  */
 function onTarget<T>(
   np: NowPlaying,
+  command: string,
   branches: {
     local: (sdk: Spotify.Player) => T;
     remote: (deviceId: string | undefined) => T;
   },
+  details?: DiagData,
 ): T {
+  diag('cmd', command, {
+    target: np.isLocal && player ? 'local' : 'remote',
+    device: shortDevice(np.deviceId),
+    ep: shortId(np.uri),
+    paused: np.paused,
+    ...details,
+  });
   return np.isLocal && player
     ? branches.local(player)
     : branches.remote(np.deviceId ?? undefined);
@@ -387,12 +502,24 @@ function onTarget<T>(
  */
 async function targetDevice(): Promise<string | undefined> {
   const { nowPlaying, localDeviceId } = usePlayer.getState();
-  if (nowPlaying?.deviceId) return nowPlaying.deviceId;
+  if (nowPlaying?.deviceId) {
+    diag('cmd', 'target device', {
+      device: shortDevice(nowPlaying.deviceId),
+      why: 'loaded',
+    });
+    return nowPlaying.deviceId;
+  }
   const { preferredDevice, setPreferredDevice } = useSettings.getState();
   const localWins =
     !!localDeviceId && (!preferredDevice || preferredDevice.kind === 'local');
   const devices = localWins ? [] : await getDevices();
   const picked = pickPlaybackDevice(preferredDevice, devices, localDeviceId);
+  diag('cmd', 'target device', {
+    device: shortDevice(picked?.deviceId),
+    why: localWins ? 'local' : 'preferred',
+    preferred: preferredDevice?.kind ?? null,
+    devices: devices.length,
+  });
   if (picked && !preferredDevice) setPreferredDevice(picked.preference);
   return picked?.deviceId;
 }
@@ -435,6 +562,12 @@ async function startUpNext(options: {
   try {
     const order = (queueEpisodes() ?? []).map((ep) => ep.uri);
     expectedStart = options.uri;
+    diag('queue', 'start up next', {
+      ep: shortId(options.uri),
+      pos: Math.round(options.positionMs / 1000),
+      device: shortDevice(options.deviceId),
+      order: order.length,
+    });
     await onLiveDevice(options.deviceId, (deviceId) =>
       startPlayback({
         deviceId,
@@ -468,6 +601,7 @@ function reconcileQueue() {
   const queue = episodes.map((ep) => ep.uri);
   // Already playing when the app opened: assume it loaded the current order.
   if (!loadedOrder) {
+    diag('queue', 'assume loaded order', { count: queue.length });
     loadedOrder = queue;
     return;
   }
@@ -479,8 +613,9 @@ function reconcileQueue() {
   queueDirty = true;
   // Only a changed next episode can't wait; a removed current one can't be
   // reloaded on: the next episode change takes care of both.
-  if (drift === 'now' && !np.paused && queue.includes(np.uri))
-    void reloadUpNext(np);
+  const reload = drift === 'now' && !np.paused && queue.includes(np.uri);
+  diag('queue', 'drift', { drift, paused: np.paused, reload });
+  if (reload) void reloadUpNext(np);
 }
 
 function scheduleReconcile() {
@@ -505,10 +640,15 @@ function onUpNextTransition(prevUri: string) {
     const queue = episodes.map((ep) => ep.uri);
     const wanted = upcoming(queue, prevUri)[0];
     if (!wanted) {
+      diag('queue', 'transition: end of Up Next');
       void pause();
     } else if (wanted !== np.uri) {
       const episode = episodes.find((ep) => ep.uri === wanted);
       if (!episode) return;
+      diag('queue', 'transition: wrong episode', {
+        playing: shortId(np.uri),
+        wanted: shortId(wanted),
+      });
       void guarded(() =>
         startUpNext({
           deviceId: np.deviceId ?? undefined,
@@ -520,6 +660,7 @@ function onUpNextTransition(prevUri: string) {
       !loadedOrder ||
       queueDrift(loadedOrder, queue, np.uri) !== 'none'
     ) {
+      diag('queue', 'transition: reload order');
       void reloadUpNext(np);
     } else {
       queueDirty = false;
@@ -543,6 +684,22 @@ export function watchQueue() {
   };
 }
 
+/** Controller state for a feedback report (see features/feedback). */
+export function playerDiagnostics() {
+  return {
+    sdk: !!player,
+    loadedOrder: loadedOrder
+      ? `${loadedOrder.length}: ${loadedOrder.slice(0, 5).map(shortId).join(',')}`
+      : null,
+    queueDirty,
+    starting,
+    expectedStart: shortId(expectedStart),
+    userActed,
+    archiveSyncing,
+    reconnecting: !!reconnecting,
+  };
+}
+
 /** Test hook: forget what the device loaded. */
 export function resetQueueSync() {
   loadedOrder = null;
@@ -553,7 +710,7 @@ export function resetQueueSync() {
 }
 
 /**
- * Plays an episode Pocket Casts style: it moves to the head of Up Next and
+ * Plays an episode: it moves to the head of Up Next and
  * the Spoticast playlist plays from there, so the queue continues after it.
  * It starts at `positionMs` when given (moved before playing), else where
  * it was left.
@@ -565,6 +722,10 @@ export function playEpisode(
   userAction();
   // iOS only lets audio start inside the user gesture.
   void player?.activateElement();
+  diag('cmd', 'play episode', {
+    ep: shortId(episode.uri),
+    name: shortName(episode.name),
+  });
   const np = usePlayer.getState().nowPlaying;
   if (np?.uri === episode.uri) return togglePlay();
   return guarded(async () => {
@@ -585,6 +746,10 @@ export function playAll(episodes: Episode[]): Promise<void> {
   userAction();
   void player?.activateElement();
   const head = episodes.slice(0, PLAY_ALL_LIMIT);
+  diag('cmd', 'play all', {
+    count: episodes.length,
+    first: shortId(head[0]?.uri),
+  });
   if (!head.length) return Promise.resolve();
   if (episodes.length > head.length)
     toast(i18n.t('smart.playAllLimited', { count: PLAY_ALL_LIMIT }));
@@ -604,12 +769,16 @@ export function togglePlay(): Promise<void> {
   const np = usePlayer.getState().nowPlaying;
   if (!np) {
     const head = queryClient.getQueryData<QueueData>(queueKey)?.episodes[0];
+    diag('cmd', 'toggle: nothing loaded', { head: shortId(head?.uri) });
     return head ? playEpisode(head) : Promise.resolve();
   }
   patchNowPlaying({ paused: !np.paused, positionMs: currentPosition(np) });
   // Up Next changed while paused: resume with the new order.
-  if (np.paused && queueDirty && inUpNext(np)) return reloadUpNext(np);
-  return onTarget(np, {
+  if (np.paused && queueDirty && inUpNext(np)) {
+    diag('cmd', 'resume with new order', { ep: shortId(np.uri) });
+    return reloadUpNext(np);
+  }
+  return onTarget(np, np.paused ? 'resume' : 'pause', {
     local: (sdk) => sdk.togglePlay(),
     remote: (deviceId) =>
       guarded(async () => {
@@ -635,10 +804,15 @@ export function seekTo(positionMs: number) {
   if (!np) return Promise.resolve();
   const clamped = Math.max(0, Math.min(np.durationMs - 1000, positionMs));
   patchNowPlaying({ positionMs: clamped });
-  return onTarget(np, {
-    local: (sdk) => sdk.seek(clamped),
-    remote: (deviceId) => guarded(() => seekPlayback(clamped, deviceId)),
-  });
+  return onTarget(
+    np,
+    'seek',
+    {
+      local: (sdk) => sdk.seek(clamped),
+      remote: (deviceId) => guarded(() => seekPlayback(clamped, deviceId)),
+    },
+    { to: Math.round(clamped / 1000) },
+  );
 }
 
 export function skip(seconds: number) {
@@ -664,6 +838,10 @@ export function next() {
   // With a stale order the device would skip to the wrong episode.
   const following = queueDirty && inUpNext(np) ? nextInQueue(np.uri) : null;
   if (following) {
+    diag('cmd', 'next: restart order', {
+      from: shortId(skipped),
+      to: shortId(following.uri),
+    });
     return guarded(async () => {
       await startUpNext({
         deviceId: np.deviceId ?? undefined,
@@ -674,7 +852,7 @@ export function next() {
     });
   }
   return guarded(async () => {
-    await onTarget(np, {
+    await onTarget(np, 'next', {
       local: (sdk) => sdk.nextTrack(),
       remote: (deviceId) => skipToNext(deviceId),
     });
@@ -693,6 +871,7 @@ export function transferTo(deviceId: string) {
   void player?.activateElement();
   const np = usePlayer.getState().nowPlaying;
   const play = !!np && !np.paused;
+  diag('cmd', 'transfer', { device: shortDevice(deviceId), play });
   return guarded(async () => {
     // "This browser" may have lost its id in the background.
     const { localDeviceId } = usePlayer.getState();
@@ -720,11 +899,16 @@ export async function switchToSpotify(playlistId: string) {
       localDeviceId,
       preferMobile,
     );
+    diag('cmd', 'switch to Spotify', {
+      device: shortDevice(device?.id),
+      type: device?.type,
+    });
     if (device?.id && device.id !== nowPlaying?.deviceId) {
       await transferPlayback(device.id, !!nowPlaying);
       toast(i18n.t('player.switchedTo', { name: device.name }));
     }
   } catch (error) {
+    diag('cmd', 'failed', errorLog(error));
     reportPlaybackError(error);
   }
   schedulePoll(1500);
@@ -848,6 +1032,7 @@ export function archiveSyncDeps(): ArchiveSyncDeps {
     },
     aborted: () => userActed,
     setSyncing: (syncing) => {
+      diag('archive', syncing ? 'silent sync start' : 'silent sync end');
       if (syncing) {
         userActed = false;
         uiBeforeSync = usePlayer.getState().nowPlaying;
@@ -876,6 +1061,8 @@ export function runArchiveSync(): Promise<void> {
     for (;;) {
       if (document.hidden) break;
       const result = await syncNextArchived(archiveSyncDeps());
+      if (result !== 'idle' && result !== 'busy')
+        diag('archive', 'silent sync', { result });
       if (result !== 'synced' && result !== 'retry') break;
       await sleep(1000);
     }

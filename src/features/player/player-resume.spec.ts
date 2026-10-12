@@ -1,3 +1,4 @@
+import { clearLog, snapshotLog } from '../../lib/diagnostics/log';
 import { useAuth } from '../../lib/spotify/auth';
 import * as endpoints from '../../lib/spotify/endpoints';
 import type { Device, PlaybackState } from '../../lib/spotify/types';
@@ -6,7 +7,12 @@ import { queryClient } from '../../lib/query/query-client';
 import { useQueueStore } from '../queue/queue-store';
 import * as archive from '../archive/archive-playlist';
 import type { NowPlaying } from './playback';
-import { initPlayer, resumeSync, transferTo } from './player-controller';
+import {
+  initPlayer,
+  resumeSync,
+  seekTo,
+  transferTo,
+} from './player-controller';
 import { usePlayer } from './player-store';
 
 /** Stand-in for the Web Playback SDK: each connect gets a new device id. */
@@ -36,6 +42,7 @@ class FakePlayer {
   disconnect = vi.fn();
   getCurrentState = vi.fn(async () => this.state);
   activateElement = vi.fn(async () => undefined);
+  seek = vi.fn(async () => undefined);
 }
 
 const device = (id: string, type = 'Smartphone') =>
@@ -48,6 +55,7 @@ describe('back from the background', () => {
   });
 
   beforeEach(() => {
+    clearLog();
     useAuth.setState({
       tokens: {
         accessToken: 't',
@@ -96,9 +104,18 @@ describe('back from the background', () => {
       },
     } as unknown as PlaybackState);
 
-    await resumeSync({ hiddenMs: 60_000 });
+    await resumeSync({ hiddenMs: 60_000, reason: 'visible' });
 
     expect(FakePlayer.last.disconnect).toHaveBeenCalled();
+    expect(snapshotLog().map((entry) => entry.e)).toEqual(
+      expect.arrayContaining([
+        'resume sync',
+        'registered',
+        'reconnect',
+        'reconnected',
+        'resume sync done',
+      ]),
+    );
     expect(usePlayer.getState().localDeviceId).not.toBe(lostId);
     expect(usePlayer.getState().nowPlaying).toMatchObject({
       deviceId: 'phone',
@@ -116,6 +133,29 @@ describe('back from the background', () => {
     await resumeSync({ hiddenMs: 60_000 });
     expect(FakePlayer.last.disconnect).not.toHaveBeenCalled();
     expect(usePlayer.getState().localDeviceId).toBe(id);
+  });
+
+  it('logs commands played in this browser', async () => {
+    const id = usePlayer.getState().localDeviceId;
+    usePlayer.setState({
+      nowPlaying: {
+        uri: 'spotify:episode:a',
+        isLocal: true,
+        paused: true,
+        deviceId: id,
+        durationMs: 3_600_000,
+        positionMs: 0,
+        updatedAt: Date.now(),
+      } as NowPlaying,
+    });
+    await seekTo(30_000);
+    expect(FakePlayer.last.seek).toHaveBeenCalledWith(30_000);
+    expect(snapshotLog()).toContainEqual(
+      expect.objectContaining({
+        e: 'seek',
+        d: expect.objectContaining({ target: 'local', to: 30 }),
+      }),
+    );
   });
 
   it('picks up what other devices archived', async () => {

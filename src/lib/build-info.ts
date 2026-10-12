@@ -3,8 +3,12 @@ export type BuildInfo = typeof __APP_BUILD__;
 
 export const APP_BUILD: BuildInfo = __APP_BUILD__;
 
-/** Build of the beta channel, served from beta.spoticast.it. */
-export const IS_BETA = APP_BUILD.channel === 'beta';
+/**
+ * Build of the beta channel, served from beta.spoticast.it. Same source as
+ * APP_BUILD.channel, but a literal at build time, so production drops the
+ * beta-only code.
+ */
+export const IS_BETA = import.meta.env.VITE_CHANNEL === 'beta';
 
 /** App logo of the channel (the beta one carries a "BETA" label). */
 export const LOGO_URL = `${import.meta.env.BASE_URL}${IS_BETA ? 'icons-beta/' : ''}logo.svg`;

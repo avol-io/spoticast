@@ -5,6 +5,7 @@ import * as update from '../../lib/pwa/update';
 import { useAuth } from '../../lib/spotify/auth';
 import { useSettings } from '../../lib/storage/settings';
 import { useArchiveStore } from '../archive/archive-store';
+import { closeFeedback, useFeedback } from '../feedback/feedback-store';
 import * as controller from '../player/player-controller';
 
 import SettingsPage from './settings-page';
@@ -24,10 +25,20 @@ vi.mock('../../lib/build-info', () => ({
   APP_TITLE: 'Spoticast',
 }));
 
+const diagnostics = vi.hoisted(() => ({ enabled: true }));
+vi.mock('../../lib/diagnostics/config', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  get DIAG_ENABLED() {
+    return diagnostics.enabled;
+  },
+}));
+
 describe('SettingsPage', () => {
   afterEach(() => {
     act(() => update.resetUpdate());
     Object.assign(build, { beta: false, releaseUrl: undefined });
+    diagnostics.enabled = true;
+    closeFeedback();
   });
 
   it('updates the theme and skip intervals', async () => {
@@ -130,5 +141,19 @@ describe('SettingsPage', () => {
     });
     render(<SettingsPage />, { wrapper: MemoryRouter });
     expect(screen.getByText('Version v2.0.0 is ready.')).toBeInTheDocument();
+  });
+
+  it('opens the feedback report (beta)', async () => {
+    render(<SettingsPage />, { wrapper: MemoryRouter });
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Report a problem' }),
+    );
+    expect(useFeedback.getState().open).toBe(true);
+  });
+
+  it('has no feedback in production', () => {
+    diagnostics.enabled = false;
+    render(<SettingsPage />, { wrapper: MemoryRouter });
+    expect(screen.queryByText('Feedback (beta)')).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import i18n from '../../i18n';
+import { diag, shortId } from '../../lib/diagnostics/log';
 import { queryClient } from '../../lib/query/query-client';
 import { SpotifyApiError } from '../../lib/spotify/client';
 import {
@@ -39,10 +40,12 @@ export function ensureQueuePlaylist(): Promise<string> {
         // A "deleted" playlist is only unfollowed: follow it again.
         const [followed] = await libraryContains([uri]);
         if (!followed) await saveToLibrary([uri]);
+        diag('queue', 'playlist ready', { followedAgain: !followed });
         return playlistId;
       } catch (error) {
         if (!(error instanceof SpotifyApiError && error.status === 404))
           throw error;
+        diag('queue', 'playlist gone');
       }
     }
     const me = await getMe();
@@ -56,6 +59,7 @@ export function ensureQueuePlaylist(): Promise<string> {
         'Up Next · managed by Spoticast',
       ));
     setPlaylist(playlist.id, me.id);
+    diag('queue', existing ? 'playlist found' : 'playlist created');
     return playlist.id;
   })().catch((error) => {
     ensuring = null;
@@ -120,6 +124,7 @@ export function queueSettled(): Promise<void> {
 
 /** Applies an optimistic change, rolls it back and resyncs on failure. */
 async function mutate(
+  op: string,
   optimistic: (episodes: Episode[]) => Episode[],
   write: (playlistId: string) => Promise<unknown>,
 ) {
@@ -128,7 +133,14 @@ async function mutate(
   setQueue(optimistic);
   try {
     await write(playlistId);
+    diag('queue', op, {
+      count: queryClient.getQueryData<QueueData>(queueKey)?.episodes.length,
+    });
   } catch (error) {
+    diag('queue', `${op} failed, rolled back`, {
+      status: error instanceof SpotifyApiError ? error.status : undefined,
+      message: error instanceof Error ? error.message : String(error),
+    });
     queryClient.setQueryData(queueKey, previous);
     void queryClient.invalidateQueries({ queryKey: queueKey });
     toast(i18n.t('errors.generic'), { tone: 'error' });
@@ -143,6 +155,7 @@ async function placeAt(episode: Episode, target: number) {
   if (index === target) return;
   if (index === -1) {
     await mutate(
+      `add ${shortId(episode.uri)} at ${target}`,
       (list) => [...list.slice(0, target), episode, ...list.slice(target)],
       (id) => addPlaylistItems(id, [episode.uri], target),
     );
@@ -151,6 +164,7 @@ async function placeAt(episode: Episode, target: number) {
   const to = Math.min(target, episodes.length - 1);
   const { rangeStart, insertBefore } = moveRequest(index, to);
   await mutate(
+    `move ${shortId(episode.uri)} ${index}→${to}`,
     (list) => applyMove(list, index, to),
     (id) => reorderPlaylistItem(id, rangeStart, insertBefore),
   );
@@ -214,6 +228,7 @@ export function insertIntoQueue(
             )
           : rest.length;
     await mutate(
+      `insert ${batch.length} ${where} at ${position}`,
       (list) => {
         const others = list.filter((ep) => !uris.has(ep.uri));
         return [
@@ -239,6 +254,7 @@ export function removeFromQueue(uri: string, { silent = false } = {}) {
     const { episodes } = await currentQueue();
     if (!episodes.some((ep) => ep.uri === uri)) return;
     await mutate(
+      `remove ${shortId(uri)}`,
       (list) => list.filter((ep) => ep.uri !== uri),
       (id) => removePlaylistItems(id, [uri]),
     );
@@ -254,6 +270,7 @@ export function removeManyFromQueue(uris: string[], { silent = false } = {}) {
     const present = episodes.filter((ep) => drop.has(ep.uri));
     if (present.length === 0) return;
     await mutate(
+      `remove ${present.length}`,
       (list) => list.filter((ep) => !drop.has(ep.uri)),
       (id) =>
         removePlaylistItems(
@@ -283,6 +300,7 @@ export function moveInQueue(from: number, to: number) {
     if (from === to) return;
     const { rangeStart, insertBefore } = moveRequest(from, to);
     await mutate(
+      `move ${from}→${to}`,
       (list) => applyMove(list, from, to),
       (id) => reorderPlaylistItem(id, rangeStart, insertBefore),
     );
@@ -299,6 +317,7 @@ export async function pruneFinishedFromQueue() {
   if (finished.length === 0) return;
   await serial(() =>
     mutate(
+      `prune ${finished.length} finished`,
       (list) => list.filter((ep) => !finished.includes(ep.uri)),
       (id) => removePlaylistItems(id, finished),
     ),

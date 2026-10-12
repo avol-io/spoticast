@@ -1,6 +1,6 @@
 # Spoticast
 
-Spoticast is a Pocket Casts–style client for your **Spotify podcasts**. It is an installable PWA, designed for mobile first and laid out for desktop too. It runs entirely in the browser: there is no backend, and it is deployed as static files.
+Spoticast is a client for your **Spotify podcasts**. It is an installable PWA, designed for mobile first and laid out for desktop too. It runs entirely in the browser: there is no backend, and it is deployed as static files.
 
 ## Features
 

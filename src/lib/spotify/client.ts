@@ -1,3 +1,4 @@
+import { diag } from '../diagnostics/log';
 import { getAccessToken } from './auth';
 import type { Paging } from './types';
 
@@ -64,6 +65,8 @@ export async function spotify<T>(
   { method = 'GET', query, body, signal }: RequestOptions = {},
 ): Promise<T> {
   const url = buildUrl(path, query);
+  // For the diagnostics log: no query string, no host.
+  const where = `${method} ${new URL(url).pathname.replace(/^\/v1/, '')}`;
   let forceRefresh = false;
   let rateLimitRetries = 0;
   let networkRetries = 0;
@@ -91,14 +94,22 @@ export async function spotify<T>(
     if (!res) {
       // Back from the background, iOS wakes the network after the page.
       if (networkRetries < MAX_NETWORK_RETRIES && !signal?.aborted) {
+        diag('api', 'network error, retrying', { call: where });
         networkRetries++;
         await sleep(NETWORK_RETRY_MS);
         continue;
       }
+      if (!signal?.aborted)
+        diag('api', 'network error', {
+          call: where,
+          message:
+            networkError instanceof Error ? networkError.message : undefined,
+        });
       throw networkError;
     }
 
     if (res.status === 401 && !forceRefresh) {
+      diag('api', '401, refreshing token', { call: where });
       forceRefresh = true;
       continue;
     }
@@ -106,11 +117,18 @@ export async function spotify<T>(
       rateLimitRetries++;
       const seconds =
         Number(res.headers.get('Retry-After')) || 2 ** rateLimitRetries;
+      diag('api', '429, waiting', { call: where, seconds });
       await sleep(seconds * 1000);
       continue;
     }
     if (!res.ok) {
       const detail = await res.json().catch(() => null);
+      diag('api', 'error', {
+        call: where,
+        status: res.status,
+        reason: detail?.error?.reason,
+        message: detail?.error?.message,
+      });
       throw new SpotifyApiError(
         res.status,
         detail?.error?.message ?? `HTTP ${res.status}`,

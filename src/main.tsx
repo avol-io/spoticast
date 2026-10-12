@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import * as ReactDOM from 'react-dom/client';
 import App from './app/app';
 import './i18n';
+import { startDiagnostics } from './lib/diagnostics/lifecycle';
 import { listenForInstallPrompt } from './lib/pwa/install';
 import { registerServiceWorker } from './lib/pwa/register';
 import { loopbackUrl } from './lib/spotify/auth';
@@ -19,6 +20,10 @@ window.addEventListener('unhandledrejection', (event) => {
     event.preventDefault();
   }
 });
+
+// Beta and dev only: after the handler above, which marks expected
+// rejections as handled.
+startDiagnostics();
 
 const loopback = loopbackUrl(window.location.href);
 
