@@ -43,6 +43,9 @@ export const it: Dictionary = {
     app: 'App',
     install: 'Installa Spoticast',
     installHint: "Usala come un'app, dalla schermata Home o dal dock.",
+    debugMode: 'Modalità debug',
+    debugModeHint:
+      "Mostra i dati grezzi inviati da Spotify, come le date di uscita, accanto a come li legge l'app.",
     installed: 'Spoticast è installata',
     account: 'Account',
     logout: 'Esci',

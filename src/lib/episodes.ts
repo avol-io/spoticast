@@ -66,7 +66,10 @@ export function formatClock(ms: number): string {
 
 const DAY_MS = 86_400_000;
 
-/** "Today", "3 days ago", then "12 May" (or "12 May 2023" for other years). */
+/**
+ * "Today", "yesterday", the weekday ("Tuesday") within the week, then
+ * "Tue, Oct 6" (or "Mon, Oct 6, 2025" for other years).
+ */
 export function formatReleaseDate(
   date: Date,
   lang: string,
@@ -78,13 +81,17 @@ export function formatReleaseDate(
     now.getDate(),
   );
   const days = Math.round((startOfToday.getTime() - date.getTime()) / DAY_MS);
-  if (days >= 0 && days < 7) {
+  if (days === 0 || days === 1) {
     return new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(
       -days,
       'day',
     );
   }
+  if (days > 1 && days < 7) {
+    return new Intl.DateTimeFormat(lang, { weekday: 'long' }).format(date);
+  }
   return new Intl.DateTimeFormat(lang, {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
     ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' }),

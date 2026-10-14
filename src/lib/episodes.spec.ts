@@ -57,15 +57,26 @@ describe('episode helpers', () => {
     expect(formatClock(3_723_000)).toBe('1:02:03');
   });
 
-  it('formats recent dates relatively and older ones absolutely', () => {
-    const now = new Date(2024, 4, 20, 15);
+  it('formats recent dates by day and older ones with the weekday', () => {
+    const now = new Date(2024, 4, 20, 15); // Monday
     expect(formatReleaseDate(new Date(2024, 4, 20), 'en', now)).toBe('today');
-    expect(formatReleaseDate(new Date(2024, 4, 17), 'en', now)).toBe(
-      '3 days ago',
+    expect(formatReleaseDate(new Date(2024, 4, 19), 'en', now)).toBe(
+      'yesterday',
     );
-    expect(formatReleaseDate(new Date(2024, 3, 2), 'en', now)).toBe('Apr 2');
+    expect(formatReleaseDate(new Date(2024, 4, 17), 'en', now)).toBe('Friday');
+    expect(formatReleaseDate(new Date(2024, 4, 14), 'en', now)).toBe('Tuesday');
+    expect(formatReleaseDate(new Date(2024, 4, 13), 'en', now)).toBe(
+      'Mon, May 13',
+    );
+    expect(formatReleaseDate(new Date(2024, 3, 2), 'en', now)).toBe(
+      'Tue, Apr 2',
+    );
     expect(formatReleaseDate(new Date(2023, 3, 2), 'en', now)).toBe(
-      'Apr 2, 2023',
+      'Sun, Apr 2, 2023',
+    );
+    expect(formatReleaseDate(new Date(2024, 4, 17), 'it', now)).toBe('venerdì');
+    expect(formatReleaseDate(new Date(2024, 4, 13), 'it', now)).toBe(
+      'lun 13 mag',
     );
   });
 

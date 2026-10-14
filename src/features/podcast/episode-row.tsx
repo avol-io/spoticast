@@ -2,13 +2,7 @@ import { Archive, Check, Undo2, Video } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import {
-  episodeProgress,
-  formatDuration,
-  formatReleaseDate,
-  pickImage,
-  releaseDate,
-} from '../../lib/episodes';
+import { episodeProgress, formatDuration, pickImage } from '../../lib/episodes';
 import type { SimplifiedEpisode } from '../../lib/spotify/types';
 import { useArchiveStatus } from '../archive/use-archive';
 import {
@@ -17,6 +11,7 @@ import {
   useEpisodeCard,
   useOpenEpisode,
 } from '../episode/open-episode';
+import ReleaseDate from '../episode/release-date';
 
 export interface EpisodeRowProps {
   episode: SimplifiedEpisode;
@@ -107,7 +102,7 @@ export function EpisodeRow({
   video,
   actions,
 }: EpisodeRowProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const status = useArchiveStatus(episode);
   const openEpisode = useOpenEpisode();
   const [params] = useSearchParams();
@@ -140,7 +135,7 @@ export function EpisodeRow({
               <span className="truncate text-accent-ink">{eyebrow} ·</span>
             )}
             <span>
-              {formatReleaseDate(releaseDate(episode), i18n.language)}
+              <ReleaseDate episode={episode} />
             </span>
             {video && (
               <Video className="size-3.5" aria-label={t('podcast.video')} />

@@ -13,6 +13,7 @@ import {
   transferPlayback,
 } from '../../lib/spotify/endpoints';
 import type { Episode } from '../../lib/spotify/types';
+import { usePositions } from '../../lib/storage/positions';
 import { useSettings } from '../../lib/storage/settings';
 import { toast } from '../../lib/storage/toasts';
 import { libraryKeys } from '../library/queries';
@@ -108,9 +109,21 @@ function onEpisodeFinished(uri: string) {
     return;
   lastFinished = { uri, at: Date.now() };
   diag('player', 'finished', { ep: shortId(uri) });
+  usePositions.getState().forget(uri);
   void removeFromQueue(uri, { silent: true }).catch(() => undefined);
   // Resume points changed: refresh badges and lists.
   void queryClient.invalidateQueries({ queryKey: libraryKeys.episodes() });
+}
+
+/** Remembers where an episode is, for its next start (see startPosition). */
+function savePosition(np: NowPlaying | null, now = Date.now()) {
+  if (np?.type !== 'episode') return;
+  usePositions.getState().remember(np.uri, currentPosition(np, now));
+}
+
+/** Remembers where playback is: the app may not run again until reopened. */
+export function savePlaybackPosition() {
+  savePosition(usePlayer.getState().nowPlaying);
 }
 
 export function setNowPlaying(
@@ -119,6 +132,8 @@ export function setNowPlaying(
 ) {
   if (archiveSyncing) return;
   const prev = usePlayer.getState().nowPlaying;
+  if (prev && prev.uri !== next?.uri) savePosition(prev, next?.updatedAt);
+  if (next?.paused) savePosition(next);
   if (
     prev?.uri !== next?.uri ||
     prev?.paused !== next?.paused ||
@@ -148,10 +163,10 @@ export function setNowPlaying(
 
 function patchNowPlaying(patch: Partial<NowPlaying>) {
   const np = usePlayer.getState().nowPlaying;
-  if (np)
-    usePlayer.setState({
-      nowPlaying: { ...np, ...patch, updatedAt: Date.now() },
-    });
+  if (!np) return;
+  const next = { ...np, ...patch, updatedAt: Date.now() };
+  usePlayer.setState({ nowPlaying: next });
+  if (next.paused) savePosition(next);
 }
 
 // --- Errors -----------------------------------------------------------------
@@ -266,15 +281,18 @@ export async function initPlayer() {
 
 let reconnecting: Promise<string | undefined> | null = null;
 
-/** Resolves with the SDK device id once ready, or undefined on timeout. */
-function waitForSdkReady(timeoutMs: number): Promise<string | undefined> {
+/** Resolves with `pick(state)` once defined, or undefined on timeout. */
+function waitForPlayer<T>(
+  pick: (state: ReturnType<typeof usePlayer.getState>) => T | undefined,
+  timeoutMs: number,
+): Promise<T | undefined> {
   return new Promise((resolve) => {
     const check = () => {
-      const { sdkStatus, localDeviceId } = usePlayer.getState();
-      if (sdkStatus !== 'ready' || !localDeviceId) return false;
+      const value = pick(usePlayer.getState());
+      if (value === undefined) return false;
       clearTimeout(timer);
       unsubscribe();
-      resolve(localDeviceId);
+      resolve(value);
       return true;
     };
     const timer = setTimeout(() => {
@@ -285,6 +303,13 @@ function waitForSdkReady(timeoutMs: number): Promise<string | undefined> {
     check();
   });
 }
+
+/** Resolves with the SDK device id once ready, or undefined on timeout. */
+const waitForSdkReady = (timeoutMs: number) =>
+  waitForPlayer(
+    (s) => (s.sdkStatus === 'ready' ? s.localDeviceId : undefined),
+    timeoutMs,
+  );
 
 /**
  * Connects this browser's player to Spotify again (iOS drops it in the
@@ -496,12 +521,16 @@ function onTarget<T>(
     : branches.remote(np.deviceId ?? undefined);
 }
 
+/** How long a start waits for this browser's player to connect. */
+const SDK_START_WAIT_MS = 5_000;
+
 /**
  * Device to start playback on: where something is loaded, else the
  * preferred device (saving the default when there is no preference yet).
  */
 async function targetDevice(): Promise<string | undefined> {
-  const { nowPlaying, localDeviceId } = usePlayer.getState();
+  const { nowPlaying, sdkStatus } = usePlayer.getState();
+  let { localDeviceId } = usePlayer.getState();
   if (nowPlaying?.deviceId) {
     diag('cmd', 'target device', {
       device: shortDevice(nowPlaying.deviceId),
@@ -510,15 +539,28 @@ async function targetDevice(): Promise<string | undefined> {
     return nowPlaying.deviceId;
   }
   const { preferredDevice, setPreferredDevice } = useSettings.getState();
-  const localWins =
-    !!localDeviceId && (!preferredDevice || preferredDevice.kind === 'local');
+  const wantsLocal = !preferredDevice || preferredDevice.kind === 'local';
+  let waitedMs: number | undefined;
+  // Just opened or reconnecting: wait for this browser rather than start
+  // on whatever other device comes first.
+  if (wantsLocal && !localDeviceId && sdkStatus === 'loading') {
+    const startedAt = Date.now();
+    localDeviceId = await waitForSdkReady(SDK_START_WAIT_MS);
+    waitedMs = Date.now() - startedAt;
+  }
+  const localWins = wantsLocal && !!localDeviceId;
   const devices = localWins ? [] : await getDevices();
   const picked = pickPlaybackDevice(preferredDevice, devices, localDeviceId);
   diag('cmd', 'target device', {
     device: shortDevice(picked?.deviceId),
-    why: localWins ? 'local' : 'preferred',
+    why: localWins
+      ? 'local'
+      : preferredDevice?.kind === 'local'
+        ? 'fallback'
+        : 'preferred',
     preferred: preferredDevice?.kind ?? null,
     devices: devices.length,
+    waitedMs,
   });
   if (picked && !preferredDevice) setPreferredDevice(picked.preference);
   return picked?.deviceId;
@@ -545,10 +587,31 @@ const queueEpisodes = () =>
 const inUpNext = (np: NowPlaying | null): np is NowPlaying =>
   !!np?.contextUri && np.contextUri === playlistUri();
 
-const resumePosition = (episode: Episode) => {
-  const resume = episode.resume_point;
-  return resume && !resume.fully_played ? resume.resume_position_ms : 0;
-};
+const START_POSITION_TIMEOUT_MS = 1500;
+
+/**
+ * Where to start `episode`. Cached episodes can be days old, so the resume
+ * point is read fresh; Spotify saves it with a delay, so where this app last
+ * saw the episode wins when further on.
+ */
+async function startPosition(episode: Episode): Promise<number> {
+  const fresh = await Promise.race([
+    getEpisode(episode.id).catch(() => null),
+    sleep(START_POSITION_TIMEOUT_MS).then(() => null),
+  ]);
+  const resume = (fresh ?? episode).resume_point;
+  const saved = usePositions.getState().positions[episode.uri];
+  const remote = resume && !resume.fully_played ? resume.resume_position_ms : 0;
+  const position = resume?.fully_played ? 0 : Math.max(remote, saved?.ms ?? 0);
+  diag('queue', 'start position', {
+    ep: shortId(episode.uri),
+    fresh: !!fresh,
+    remote: Math.round(remote / 1000),
+    saved: saved ? Math.round(saved.ms / 1000) : null,
+    done: !!resume?.fully_played,
+  });
+  return position;
+}
 
 /** Plays Up Next from `uri`, remembering the order the device loads. */
 async function startUpNext(options: {
@@ -649,11 +712,11 @@ function onUpNextTransition(prevUri: string) {
         playing: shortId(np.uri),
         wanted: shortId(wanted),
       });
-      void guarded(() =>
+      void guarded(async () =>
         startUpNext({
           deviceId: np.deviceId ?? undefined,
           uri: wanted,
-          positionMs: resumePosition(episode),
+          positionMs: await startPosition(episode),
         }),
       );
     } else if (
@@ -709,6 +772,32 @@ export function resetQueueSync() {
   clearTimeout(reconcileTimer);
 }
 
+/** How long a start may take to show up as playing. */
+const LAUNCH_SETTLE_MS = 5_000;
+
+/** A start from the user not playing yet: nothing is loaded meanwhile. */
+let launching: Promise<void> | null = null;
+
+function launch(action: () => Promise<void>): Promise<void> {
+  let started = false;
+  const run = guarded(async () => {
+    await action();
+    started = true;
+  });
+  launching = run;
+  // The device takes a few seconds to report the start.
+  void run
+    .then(() =>
+      started
+        ? waitForPlayer((s) => s.nowPlaying ?? undefined, LAUNCH_SETTLE_MS)
+        : undefined,
+    )
+    .finally(() => {
+      if (launching === run) launching = null;
+    });
+  return run;
+}
+
 /**
  * Plays an episode: it moves to the head of Up Next and
  * the Spoticast playlist plays from there, so the queue continues after it.
@@ -728,12 +817,13 @@ export function playEpisode(
   });
   const np = usePlayer.getState().nowPlaying;
   if (np?.uri === episode.uri) return togglePlay();
-  return guarded(async () => {
+  return launch(async () => {
+    const start = positionMs ?? startPosition(episode);
     await moveToHead(episode);
     await startUpNext({
       deviceId: await targetDevice(),
       uri: episode.uri,
-      positionMs: positionMs ?? resumePosition(episode),
+      positionMs: await start,
     });
   });
 }
@@ -753,12 +843,13 @@ export function playAll(episodes: Episode[]): Promise<void> {
   if (!head.length) return Promise.resolve();
   if (episodes.length > head.length)
     toast(i18n.t('smart.playAllLimited', { count: PLAY_ALL_LIMIT }));
-  return guarded(async () => {
+  return launch(async () => {
+    const start = startPosition(head[0]);
     await prependToQueue(head);
     await startUpNext({
       deviceId: await targetDevice(),
       uri: head[0].uri,
-      positionMs: resumePosition(head[0]),
+      positionMs: await start,
     });
   });
 }
@@ -768,6 +859,10 @@ export function togglePlay(): Promise<void> {
   void player?.activateElement();
   const np = usePlayer.getState().nowPlaying;
   if (!np) {
+    if (launching) {
+      diag('cmd', 'toggle: start in flight');
+      return launching;
+    }
     const head = queryClient.getQueryData<QueueData>(queueKey)?.episodes[0];
     diag('cmd', 'toggle: nothing loaded', { head: shortId(head?.uri) });
     return head ? playEpisode(head) : Promise.resolve();
@@ -779,7 +874,8 @@ export function togglePlay(): Promise<void> {
     return reloadUpNext(np);
   }
   return onTarget(np, np.paused ? 'resume' : 'pause', {
-    local: (sdk) => sdk.togglePlay(),
+    // Not a toggle: a repeated command (lock screen) must not undo itself.
+    local: (sdk) => (np.paused ? sdk.resume() : sdk.pause()),
     remote: (deviceId) =>
       guarded(async () => {
         if (!np.paused) return pausePlayback(deviceId);
@@ -846,7 +942,7 @@ export function next() {
       await startUpNext({
         deviceId: np.deviceId ?? undefined,
         uri: following.uri,
-        positionMs: resumePosition(following),
+        positionMs: await startPosition(following),
       });
       await removeFromQueue(skipped, { silent: true });
     });
@@ -863,6 +959,12 @@ export function next() {
 export function pause() {
   const np = usePlayer.getState().nowPlaying;
   if (!np || np.paused) return Promise.resolve();
+  return togglePlay();
+}
+
+export function resume() {
+  const np = usePlayer.getState().nowPlaying;
+  if (np && !np.paused) return Promise.resolve();
   return togglePlay();
 }
 

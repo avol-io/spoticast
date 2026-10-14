@@ -1,16 +1,21 @@
 import { clearLog, snapshotLog } from '../../lib/diagnostics/log';
 import { useAuth } from '../../lib/spotify/auth';
 import * as endpoints from '../../lib/spotify/endpoints';
-import type { Device, PlaybackState } from '../../lib/spotify/types';
+import type { Device, Episode, PlaybackState } from '../../lib/spotify/types';
 import { queueKey, type QueueData } from '../queue/queue';
 import { queryClient } from '../../lib/query/query-client';
 import { useQueueStore } from '../queue/queue-store';
 import * as archive from '../archive/archive-playlist';
 import type { NowPlaying } from './playback';
+import { useSettings } from '../../lib/storage/settings';
 import {
   initPlayer,
+  pause,
+  playEpisode,
+  resume,
   resumeSync,
   seekTo,
+  togglePlay,
   transferTo,
 } from './player-controller';
 import { usePlayer } from './player-store';
@@ -43,6 +48,9 @@ class FakePlayer {
   getCurrentState = vi.fn(async () => this.state);
   activateElement = vi.fn(async () => undefined);
   seek = vi.fn(async () => undefined);
+  resume = vi.fn(async () => undefined);
+  pause = vi.fn(async () => undefined);
+  togglePlay = vi.fn(async () => undefined);
 }
 
 const device = (id: string, type = 'Smartphone') =>
@@ -176,5 +184,106 @@ describe('back from the background', () => {
     const newId = usePlayer.getState().localDeviceId;
     expect(newId).not.toBe(lostId);
     expect(transfer).toHaveBeenCalledWith(newId, false);
+  });
+
+  describe('play and pause here', () => {
+    const local = (paused: boolean) =>
+      usePlayer.setState({
+        nowPlaying: {
+          uri: 'spotify:episode:a',
+          isLocal: true,
+          paused,
+          deviceId: usePlayer.getState().localDeviceId,
+          durationMs: 3_600_000,
+          positionMs: 0,
+          updatedAt: Date.now(),
+        } as NowPlaying,
+      });
+
+    it('resumes and pauses explicitly, never toggles', async () => {
+      local(true);
+      await togglePlay();
+      expect(FakePlayer.last.resume).toHaveBeenCalledTimes(1);
+      local(false);
+      await togglePlay();
+      expect(FakePlayer.last.pause).toHaveBeenCalledTimes(1);
+      expect(FakePlayer.last.togglePlay).not.toHaveBeenCalled();
+    });
+
+    it('ignores a repeated play while a stale state says paused', async () => {
+      FakePlayer.last.pause.mockClear();
+      local(true);
+      await resume();
+      // An old SDK event lands between two lock screen presses.
+      local(true);
+      await resume();
+      expect(FakePlayer.last.pause).not.toHaveBeenCalled();
+      await resume();
+      await pause();
+      expect(FakePlayer.last.pause).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('starting before this browser is connected', () => {
+    let readyId: string | undefined;
+    let play: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      readyId = usePlayer.getState().localDeviceId;
+      useSettings.setState({ preferredDevice: { kind: 'local' } });
+      vi.spyOn(endpoints, 'libraryContains').mockResolvedValue([true]);
+      vi.spyOn(endpoints, 'getPlaybackState').mockReturnValue(
+        new Promise(() => undefined),
+      );
+      vi.spyOn(endpoints, 'getEpisode').mockRejectedValue(new Error('offline'));
+      vi.spyOn(endpoints, 'getDevices').mockResolvedValue([
+        device('other', 'Computer'),
+      ]);
+      play = vi.spyOn(endpoints, 'startPlayback').mockResolvedValue();
+      queryClient.setQueryData<QueueData>(queueKey, {
+        episodes: [{ id: 'a', uri: 'spotify:episode:a' } as Episode],
+        otherCount: 0,
+      });
+      usePlayer.setState({ sdkStatus: 'loading', localDeviceId: undefined });
+    });
+
+    afterEach(() => {
+      usePlayer.setState({ sdkStatus: 'ready', localDeviceId: readyId });
+      vi.useRealTimers();
+    });
+
+    const episode = { id: 'a', uri: 'spotify:episode:a' } as Episode;
+
+    it('waits for it instead of starting on another device', async () => {
+      const started = playEpisode(episode);
+      await vi.advanceTimersByTimeAsync(1000);
+      usePlayer.setState({ sdkStatus: 'ready', localDeviceId: 'web-late' });
+      await started;
+      expect(play).toHaveBeenCalledWith(
+        expect.objectContaining({ deviceId: 'web-late' }),
+      );
+      expect(snapshotLog()).toContainEqual(
+        expect.objectContaining({
+          e: 'target device',
+          d: expect.objectContaining({ why: 'local' }),
+        }),
+      );
+    });
+
+    it('falls back to another device when it never connects', async () => {
+      const started = playEpisode(episode);
+      await vi.advanceTimersByTimeAsync(5000);
+      await started;
+      expect(play).toHaveBeenCalledWith(
+        expect.objectContaining({ deviceId: 'other' }),
+      );
+      expect(snapshotLog()).toContainEqual(
+        expect.objectContaining({
+          e: 'target device',
+          d: expect.objectContaining({ why: 'fallback' }),
+        }),
+      );
+    });
   });
 });

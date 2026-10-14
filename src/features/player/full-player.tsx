@@ -30,10 +30,8 @@ import { useDominantColor } from '../../lib/color/dominant';
 import {
   formatClock,
   formatDuration,
-  formatReleaseDate,
   isVideoShow,
   pickImage,
-  releaseDate,
 } from '../../lib/episodes';
 import { getEpisode } from '../../lib/spotify/endpoints';
 import type { Episode } from '../../lib/spotify/types';
@@ -58,6 +56,7 @@ import {
 } from './player-controller';
 import { usePlayer } from './player-store';
 import { usePlaybackPosition } from './use-position';
+import ReleaseDate from '../episode/release-date';
 
 type Tab = 'episode' | 'notes' | 'comments';
 
@@ -265,7 +264,7 @@ function Notes({ np }: { np: NowPlaying }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs font-medium text-fg-subtle">
-        {formatReleaseDate(releaseDate(episode.data), i18n.language)} ·{' '}
+        <ReleaseDate episode={episode.data} /> ·{' '}
         {formatDuration(episode.data.duration_ms, i18n.language)}
       </p>
       <EpisodeDetails episode={episode.data} />

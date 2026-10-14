@@ -41,6 +41,9 @@ export const en = {
     app: 'App',
     install: 'Install Spoticast',
     installHint: 'Use it like an app, from your home screen or dock.',
+    debugMode: 'Debug mode',
+    debugModeHint:
+      'Shows the raw data Spotify sends, such as release dates, next to how the app reads it.',
     installed: 'Spoticast is installed',
     account: 'Account',
     logout: 'Log out',

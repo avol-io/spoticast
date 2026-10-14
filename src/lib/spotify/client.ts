@@ -137,7 +137,14 @@ export async function spotify<T>(
     }
 
     const text = await res.text();
-    return (text ? JSON.parse(text) : undefined) as T;
+    if (!text) return undefined as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      // Player commands sometimes answer 200 with a bare id: it worked.
+      diag('api', 'non-JSON body', { call: where, status: res.status });
+      return undefined as T;
+    }
   }
 }
 

@@ -22,11 +22,14 @@ export interface SettingsState {
   /** ISO country code for the charts; null = derive from the browser. */
   chartsMarket: string | null;
   preferredDevice: PreferredDevice | null;
+  /** Shows raw Spotify data next to what the app makes of it. */
+  debugMode: boolean;
   setTheme: (theme: ThemePreference) => void;
   setLanguage: (language: Language | 'auto') => void;
   setSkip: (back: number, forward: number) => void;
   setChartsMarket: (market: string | null) => void;
   setPreferredDevice: (device: PreferredDevice | null) => void;
+  setDebugMode: (debugMode: boolean) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -38,12 +41,14 @@ export const useSettings = create<SettingsState>()(
       skipForwardSeconds: 30,
       chartsMarket: null,
       preferredDevice: null,
+      debugMode: false,
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
       setSkip: (skipBackSeconds, skipForwardSeconds) =>
         set({ skipBackSeconds, skipForwardSeconds }),
       setChartsMarket: (chartsMarket) => set({ chartsMarket }),
       setPreferredDevice: (preferredDevice) => set({ preferredDevice }),
+      setDebugMode: (debugMode) => set({ debugMode }),
     }),
     { name: 'spoticast.settings', version: 1 },
   ),

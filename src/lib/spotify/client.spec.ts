@@ -60,6 +60,16 @@ describe('spotify client', () => {
     expect(await spotify('/me/player')).toBeUndefined();
   });
 
+  it('accepts a successful command that answers with a bare id', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('cyNiND8Goadw_0', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      }),
+    );
+    expect(await spotify('/me/player/seek', { method: 'PUT' })).toBeUndefined();
+  });
+
   it('refreshes the token once on 401', async () => {
     fetchMock
       .mockResolvedValueOnce(new Response(null, { status: 401 }))

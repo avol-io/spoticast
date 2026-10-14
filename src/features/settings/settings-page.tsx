@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import BetaBadge from '../../app/ui/beta-badge';
 import PageHeader from '../../app/ui/page-header';
 import SegmentedControl from '../../app/ui/segmented-control';
+import Switch from '../../app/ui/switch';
 import { logout } from '../../lib/spotify/auth';
 import { promptInstall, useInstall } from '../../lib/pwa/install';
 import { applyUpdate, checkForUpdate, useUpdate } from '../../lib/pwa/update';
@@ -292,6 +293,14 @@ export function SettingsPage() {
                   <Bug className="size-4" aria-hidden />
                   {t('feedback.report')}
                 </button>
+              </div>
+              <div className="px-4 py-3">
+                <Switch
+                  label={t('settings.debugMode')}
+                  description={t('settings.debugModeHint')}
+                  checked={settings.debugMode}
+                  onChange={settings.setDebugMode}
+                />
               </div>
             </Section>
           )}

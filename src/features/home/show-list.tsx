@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { formatReleaseDate, releaseDate } from '../../lib/episodes';
 import type {
   SimplifiedEpisode,
   SimplifiedShow,
 } from '../../lib/spotify/types';
 import type { Badge } from '../library/queries';
 import ShowCover from './show-cover';
+import ReleaseDate from '../episode/release-date';
 
 export interface ShowListRowProps {
   show: SimplifiedShow;
@@ -21,7 +21,7 @@ export function ShowListRow({
   latest,
   transitionName,
 }: ShowListRowProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-4 py-2.5">
       <ShowCover
@@ -34,8 +34,7 @@ export function ShowListRow({
         <p className="truncate font-semibold">{show.name}</p>
         {latest && (
           <p className="truncate text-sm text-fg-muted">
-            {formatReleaseDate(releaseDate(latest), i18n.language)} ·{' '}
-            {latest.name}
+            <ReleaseDate episode={latest} /> · {latest.name}
           </p>
         )}
         {badge && badge.count > 0 && (

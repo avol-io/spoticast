@@ -151,9 +151,17 @@ describe('SettingsPage', () => {
     expect(useFeedback.getState().open).toBe(true);
   });
 
-  it('has no feedback in production', () => {
+  it('toggles debug mode (beta)', async () => {
+    render(<SettingsPage />, { wrapper: MemoryRouter });
+    await userEvent.click(screen.getByRole('switch', { name: /Debug mode/ }));
+    expect(useSettings.getState().debugMode).toBe(true);
+    act(() => useSettings.setState({ debugMode: false }));
+  });
+
+  it('has no feedback or debug mode in production', () => {
     diagnostics.enabled = false;
     render(<SettingsPage />, { wrapper: MemoryRouter });
     expect(screen.queryByText('Feedback (beta)')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
   });
 });

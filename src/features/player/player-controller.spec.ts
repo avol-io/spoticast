@@ -3,6 +3,7 @@ import { queryClient } from '../../lib/query/query-client';
 import { SpotifyApiError } from '../../lib/spotify/client';
 import * as endpoints from '../../lib/spotify/endpoints';
 import type { Device, Episode } from '../../lib/spotify/types';
+import { usePositions } from '../../lib/storage/positions';
 import { useSettings } from '../../lib/storage/settings';
 import {
   moveInQueue,
@@ -17,6 +18,7 @@ import {
   playAll,
   playEpisode,
   resetQueueSync,
+  savePlaybackPosition,
   seekTo,
   setNowPlaying,
   togglePlay,
@@ -73,6 +75,8 @@ describe('Up Next sync', () => {
     );
     play = vi.spyOn(endpoints, 'startPlayback').mockResolvedValue();
     vi.spyOn(endpoints, 'pausePlayback').mockResolvedValue();
+    vi.spyOn(endpoints, 'getEpisode').mockRejectedValue(new Error('offline'));
+    usePositions.setState({ positions: {} });
     queryClient.setQueryData<QueueData>(queueKey, {
       episodes: [ep('a'), ep('b'), ep('c'), ep('d')],
       otherCount: 0,
@@ -205,6 +209,8 @@ describe('playAll', () => {
     vi.spyOn(endpoints, 'getPlaybackState').mockReturnValue(
       new Promise(() => undefined),
     );
+    vi.spyOn(endpoints, 'getEpisode').mockRejectedValue(new Error('offline'));
+    usePositions.setState({ positions: {} });
     queryClient.setQueryData<QueueData>(queueKey, {
       episodes: [ep('a')],
       otherCount: 0,
@@ -236,6 +242,166 @@ describe('playAll', () => {
         positionMs: 5000,
       }),
     );
+  });
+});
+
+describe('a start in flight', () => {
+  beforeEach(() => {
+    resetQueuePlaylistCache();
+    resetQueueSync();
+    useQueueStore.setState({ playlistId: 'pl', userId: 'me' });
+    useSettings.setState({ preferredDevice: null });
+    vi.spyOn(endpoints, 'libraryContains').mockResolvedValue([true]);
+    vi.spyOn(endpoints, 'getPlaybackState').mockReturnValue(
+      new Promise(() => undefined),
+    );
+    vi.spyOn(endpoints, 'getEpisode').mockRejectedValue(new Error('offline'));
+    vi.spyOn(endpoints, 'getDevices').mockResolvedValue([
+      { id: 'speaker', name: 'Speaker', type: 'Speaker' } as Device,
+    ]);
+    queryClient.setQueryData<QueueData>(queueKey, {
+      episodes: [],
+      otherCount: 0,
+    });
+    usePlayer.setState({ nowPlaying: null, localDeviceId: undefined });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    queryClient.clear();
+  });
+
+  it('is not started again by play before anything is loaded', async () => {
+    vi.spyOn(endpoints, 'addPlaylistItems').mockResolvedValue({
+      snapshot_id: 's',
+    });
+    const play = vi.spyOn(endpoints, 'startPlayback').mockResolvedValue();
+    await playAll([ep('a'), ep('b')]);
+    // Started, but the device has not reported it yet: play again.
+    await togglePlay();
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('start position', () => {
+  let play: ReturnType<typeof vi.spyOn>;
+  let getEpisode: ReturnType<typeof vi.spyOn>;
+
+  /** `id` as Spotify has it now, with its resume point at `seconds`. */
+  const onSpotify = (id: string, seconds: number, fully_played = false) =>
+    ({
+      ...ep(id),
+      resume_point: { fully_played, resume_position_ms: seconds * 1000 },
+    }) as Episode;
+
+  beforeEach(() => {
+    resetQueuePlaylistCache();
+    resetQueueSync();
+    useQueueStore.setState({ playlistId: 'pl', userId: 'me' });
+    useSettings.setState({ preferredDevice: null });
+    vi.spyOn(endpoints, 'libraryContains').mockResolvedValue([true]);
+    vi.spyOn(endpoints, 'getPlaybackState').mockReturnValue(
+      new Promise(() => undefined),
+    );
+    vi.spyOn(endpoints, 'reorderPlaylistItem').mockResolvedValue({
+      snapshot_id: 's',
+    });
+    vi.spyOn(endpoints, 'pausePlayback').mockResolvedValue();
+    play = vi.spyOn(endpoints, 'startPlayback').mockResolvedValue();
+    getEpisode = vi.spyOn(endpoints, 'getEpisode');
+    usePositions.setState({ positions: {} });
+    // A stale cache: the resume point from before the last listen.
+    queryClient.setQueryData<QueueData>(queueKey, {
+      episodes: [onSpotify('a', 0), ep('b')],
+      otherCount: 0,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    queryClient.clear();
+    usePlayer.setState({ nowPlaying: null, localDeviceId: undefined });
+  });
+
+  const startedAt = () => play.mock.calls.at(-1)?.[0].positionMs;
+
+  describe.each([
+    ['a Connect device', { deviceId: 'speaker', isLocal: false }],
+    ['this browser', { deviceId: 'sdk', isLocal: true }],
+  ])('on %s', (_, device) => {
+    beforeEach(() => {
+      usePlayer.setState({
+        localDeviceId: device.isLocal ? 'sdk' : undefined,
+        nowPlaying: playing('z', { paused: true, ...device }),
+      });
+    });
+
+    it('reads the resume point fresh instead of the cached one', async () => {
+      getEpisode.mockResolvedValue(onSpotify('a', 120));
+      await playEpisode(onSpotify('a', 0));
+      expect(startedAt()).toBe(120_000);
+    });
+
+    it('starts where the app saw it last when Spotify lags behind', async () => {
+      getEpisode.mockResolvedValue(onSpotify('a', 120));
+      // Paused at 5 minutes, then something else played.
+      setNowPlaying(
+        playing('a', { positionMs: 300_000, paused: true, ...device }),
+      );
+      setNowPlaying(playing('z', { paused: true, ...device }));
+      await playEpisode(onSpotify('a', 0));
+      expect(startedAt()).toBe(300_000);
+    });
+
+    it('starts further on when listened elsewhere meanwhile', async () => {
+      usePositions.getState().remember('spotify:episode:a', 60_000);
+      getEpisode.mockResolvedValue(onSpotify('a', 900));
+      await playEpisode(onSpotify('a', 0));
+      expect(startedAt()).toBe(900_000);
+    });
+
+    it('falls back to the cache and the saved position offline', async () => {
+      getEpisode.mockRejectedValue(new Error('offline'));
+      usePositions.getState().remember('spotify:episode:a', 60_000);
+      await playEpisode(onSpotify('a', 30));
+      expect(startedAt()).toBe(60_000);
+    });
+
+    it('starts a finished episode from the beginning', async () => {
+      usePositions.getState().remember('spotify:episode:a', 60_000);
+      getEpisode.mockResolvedValue(onSpotify('a', 0, true));
+      await playEpisode(onSpotify('a', 0));
+      expect(startedAt()).toBe(0);
+    });
+  });
+
+  it('remembers the episode switched away from', async () => {
+    getEpisode.mockRejectedValue(new Error('offline'));
+    usePlayer.setState({ nowPlaying: playing('a', { positionMs: 90_000 }) });
+    setNowPlaying(playing('b', { positionMs: 0 }));
+    expect(usePositions.getState().positions['spotify:episode:a'].ms).toBe(
+      90_000,
+    );
+  });
+
+  it('remembers where playback is when the app is hidden', () => {
+    usePlayer.setState({
+      nowPlaying: playing('a', { positionMs: 42_000, paused: true }),
+    });
+    savePlaybackPosition();
+    expect(usePositions.getState().positions['spotify:episode:a'].ms).toBe(
+      42_000,
+    );
+  });
+
+  it('remembers the position on pause', async () => {
+    usePlayer.setState({
+      nowPlaying: playing('a', { positionMs: 75_000, updatedAt: Date.now() }),
+    });
+    await togglePlay();
+    expect(
+      usePositions.getState().positions['spotify:episode:a'].ms,
+    ).toBeGreaterThanOrEqual(75_000);
   });
 });
 

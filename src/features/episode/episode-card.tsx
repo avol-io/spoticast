@@ -7,12 +7,7 @@ import EmptyState from '../../app/ui/empty-state';
 import IconButton from '../../app/ui/icon-button';
 import Sheet from '../../app/ui/sheet';
 import { useDominantColor } from '../../lib/color/dominant';
-import {
-  formatReleaseDate,
-  isVideoShow,
-  pickImage,
-  releaseDate,
-} from '../../lib/episodes';
+import { isVideoShow, pickImage } from '../../lib/episodes';
 import { getEpisode } from '../../lib/spotify/endpoints';
 import { useErrorText } from '../../lib/spotify/errors';
 import type { Episode } from '../../lib/spotify/types';
@@ -26,6 +21,7 @@ import {
   useCloseEpisode,
 } from './open-episode';
 import SpotifyComments from './spotify-comments';
+import ReleaseDate from './release-date';
 
 /** The actions of the row menu, as labelled buttons. */
 function CardActions({ episode }: { episode: Episode }) {
@@ -51,7 +47,7 @@ function CardActions({ episode }: { episode: Episode }) {
 }
 
 function CardContent({ episode }: { episode: Episode }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const show = episode.show as Episode['show'] | undefined;
   const image = pickImage(
     episode.images?.length ? episode.images : show?.images,
@@ -87,7 +83,7 @@ function CardContent({ episode }: { episode: Episode }) {
             {episode.name}
           </h2>
           <p className="mt-1 text-xs text-fg-subtle">
-            {formatReleaseDate(releaseDate(episode), i18n.language)}
+            <ReleaseDate episode={episode} />
           </p>
         </div>
       </div>

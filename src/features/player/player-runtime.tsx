@@ -7,12 +7,14 @@ import { ensureQueuePlaylist, pruneFinishedFromQueue } from '../queue/queue';
 import {
   initPlayer,
   next,
+  pause,
+  resume,
   resumeSync,
   runArchiveSync,
+  savePlaybackPosition,
   seekTo,
   skip,
   startPolling,
-  togglePlay,
   watchQueue,
 } from './player-controller';
 import { usePlayer } from './player-store';
@@ -55,8 +57,9 @@ function useMediaSession() {
     if (!('mediaSession' in navigator) || !local) return;
     const session = navigator.mediaSession;
     const handlers: [MediaSessionAction, MediaSessionActionHandler][] = [
-      ['play', () => void togglePlay()],
-      ['pause', () => void togglePlay()],
+      // iOS may repeat them: play and pause, never a toggle.
+      ['play', () => void resume()],
+      ['pause', () => void pause()],
       ['seekbackward', (d) => void skip(-(d.seekOffset ?? skipBackSeconds))],
       ['seekforward', (d) => void skip(d.seekOffset ?? skipForwardSeconds)],
       [
@@ -116,6 +119,10 @@ export function PlayerRuntime() {
     const stopPolling = startPolling();
     const stopWatching = watchQueue();
     const stopResume = onForeground((event) => void resumeSync(event));
+    // The app may be closed or killed while hidden: remember where it was.
+    const onHidden = () => document.hidden && savePlaybackPosition();
+    document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', savePlaybackPosition);
     // Archived elsewhere first: pruning Up Next then drops those too.
     syncArchive()
       .catch(() => undefined)
@@ -126,6 +133,8 @@ export function PlayerRuntime() {
       stopPolling();
       stopWatching();
       stopResume();
+      document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', savePlaybackPosition);
     };
   }, []);
   useMediaSession();
