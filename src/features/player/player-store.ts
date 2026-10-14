@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { APP_TITLE } from '../../lib/build-info';
 import type { NowPlaying } from './playback';
 
 export type SdkStatus = 'idle' | 'loading' | 'ready' | 'unavailable' | 'error';
@@ -16,6 +17,8 @@ interface PlayerState {
   sdkError?: 'player.premiumRequired' | 'player.sdkError';
   sdkErrorDetail?: string;
   localDeviceId?: string;
+  /** Name this browser's player has in Spotify Connect. */
+  localDeviceName: string;
   nowPlaying: NowPlaying | null;
   fullPlayerOpen: boolean;
   video: VideoRequest | null;
@@ -27,6 +30,7 @@ interface PlayerState {
 
 export const usePlayer = create<PlayerState>()((set) => ({
   sdkStatus: 'idle',
+  localDeviceName: APP_TITLE,
   nowPlaying: null,
   fullPlayerOpen: false,
   video: null,

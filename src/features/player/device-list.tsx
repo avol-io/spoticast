@@ -6,7 +6,7 @@ import { getDevices } from '../../lib/spotify/endpoints';
 import type { DeviceType } from '../../lib/spotify/types';
 import { useSettings } from '../../lib/storage/settings';
 import { findPreferredDevice, preferenceFor } from './playback';
-import { LOCAL_DEVICE_NAME, transferTo } from './player-controller';
+import { transferTo } from './player-controller';
 import { usePlayer } from './player-store';
 
 const icons: Record<string, typeof Laptop> = {
@@ -27,8 +27,14 @@ export const iconFor = (type: DeviceType) => icons[type] ?? Monitor;
  */
 export function DeviceList({ onPicked }: { onPicked?: () => void }) {
   const { t } = useTranslation();
-  const { localDeviceId, sdkStatus, sdkError, sdkErrorDetail, nowPlaying } =
-    usePlayer();
+  const {
+    localDeviceId,
+    localDeviceName: localName,
+    sdkStatus,
+    sdkError,
+    sdkErrorDetail,
+    nowPlaying,
+  } = usePlayer();
   const { preferredDevice, setPreferredDevice } = useSettings();
   const devices = useQuery({
     queryKey: ['devices'],
@@ -50,7 +56,7 @@ export function DeviceList({ onPicked }: { onPicked?: () => void }) {
           {
             id: localDeviceId,
             // The name Spotify Connect shows for us, with the app icon.
-            name: LOCAL_DEVICE_NAME,
+            name: localName,
             detail: t('player.thisDevice'),
             type: 'Computer',
             local: true,

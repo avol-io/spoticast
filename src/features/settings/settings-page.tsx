@@ -19,6 +19,11 @@ import { selectPlayingHere, usePlayer } from '../player/player-store';
 import { useSettings } from '../../lib/storage/settings';
 import { APP_BUILD, IS_BETA } from '../../lib/build-info';
 import { DIAG_ENABLED } from '../../lib/diagnostics/config';
+import {
+  detectDeviceKind,
+  localDeviceName,
+  MAX_DEVICE_NAME,
+} from '../../lib/device-name';
 import { clearLog } from '../../lib/diagnostics/log';
 import { openFeedback } from '../feedback/feedback-store';
 
@@ -43,6 +48,34 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <span className="font-medium">{label}</span>
       {children}
+    </div>
+  );
+}
+
+/** This browser's name in Spotify Connect, told apart from other instances. */
+function DeviceNameRow() {
+  const { t } = useTranslation();
+  const { deviceName, setDeviceName } = useSettings();
+  const inUse = usePlayer((s) => s.localDeviceName);
+  const name = localDeviceName(deviceName);
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3">
+      <label className="flex flex-wrap items-center justify-between gap-3">
+        <span className="font-medium">{t('settings.deviceName')}</span>
+        <input
+          type="text"
+          value={deviceName}
+          maxLength={MAX_DEVICE_NAME}
+          placeholder={detectDeviceKind() ?? ''}
+          autoComplete="off"
+          onChange={(e) => setDeviceName(e.target.value)}
+          className="w-48 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm focus:border-brand focus:outline-none"
+        />
+      </label>
+      <p className="text-xs text-fg-muted">
+        {t('settings.deviceNameHint', { name })}
+        {name !== inUse && ` ${t('settings.deviceNameNextStart')}`}
+      </p>
     </div>
   );
 }
@@ -267,6 +300,7 @@ export function SettingsPage() {
                 }))}
               />
             </Row>
+            <DeviceNameRow />
           </Section>
 
           <Section title={t('settings.searchSection')}>

@@ -49,7 +49,7 @@ Every task is an Nx target, run with `npx nx <target> spoticast` (or just `npx n
   - The build writes an Apache `.htaccess` (SPA fallback, HTTPS, caching) from `vite.config.mts`.
   - `public/charts/` is gitignored. Run `npm run charts` (optionally `npm run charts -- it us`) to get chart data locally.
 - Channels and versions:
-  - `VITE_CHANNEL=beta` builds the beta: "Spoticast Beta" manifest and title, `noindex`, icons from `public/icons-beta/` (regenerate with `npx pwa-assets-generator --config pwa-assets-beta.config.ts`), a Beta badge and "Spoticast Beta" as the Connect device name. Read the channel from `src/lib/build-info.ts` (`IS_BETA`, `APP_BUILD`, `LOGO_URL`), never from `__APP_BUILD__` directly.
+  - `VITE_CHANNEL=beta` builds the beta: "Spoticast Beta" manifest and title, `noindex`, icons from `public/icons-beta/` (regenerate with `npx pwa-assets-generator --config pwa-assets-beta.config.ts`), a Beta badge and "Spoticast Beta" as the Connect device name. The Connect name carries the device in brackets ("Spoticast Beta (iPhone)"): the kind from the user agent (`src/lib/device-name.ts`), or the name set in the settings, applied at the next start. Read the channel from `src/lib/build-info.ts` (`IS_BETA`, `APP_BUILD`, `LOGO_URL`), never from `__APP_BUILD__` directly.
   - The build writes `version.json` (version, sha, date, channel, release URL). When a new service worker is waiting, `src/lib/pwa/update.ts` reads it to name the new version.
   - The beta is a separate origin (GitHub Pages), so its local data is separate, but it shares the Spotify Up Next and smart playlists with production.
 - Playback and Up Next:

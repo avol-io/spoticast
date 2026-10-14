@@ -24,12 +24,15 @@ export interface SettingsState {
   preferredDevice: PreferredDevice | null;
   /** Shows raw Spotify data next to what the app makes of it. */
   debugMode: boolean;
+  /** This device's name in Spotify Connect; empty = the kind of device. */
+  deviceName: string;
   setTheme: (theme: ThemePreference) => void;
   setLanguage: (language: Language | 'auto') => void;
   setSkip: (back: number, forward: number) => void;
   setChartsMarket: (market: string | null) => void;
   setPreferredDevice: (device: PreferredDevice | null) => void;
   setDebugMode: (debugMode: boolean) => void;
+  setDeviceName: (deviceName: string) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -42,6 +45,7 @@ export const useSettings = create<SettingsState>()(
       chartsMarket: null,
       preferredDevice: null,
       debugMode: false,
+      deviceName: '',
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
       setSkip: (skipBackSeconds, skipForwardSeconds) =>
@@ -49,6 +53,7 @@ export const useSettings = create<SettingsState>()(
       setChartsMarket: (chartsMarket) => set({ chartsMarket }),
       setPreferredDevice: (preferredDevice) => set({ preferredDevice }),
       setDebugMode: (debugMode) => set({ debugMode }),
+      setDeviceName: (deviceName) => set({ deviceName }),
     }),
     { name: 'spoticast.settings', version: 1 },
   ),

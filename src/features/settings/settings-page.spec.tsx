@@ -53,6 +53,19 @@ describe('SettingsPage', () => {
     expect(useSettings.getState().skipForwardSeconds).toBe(60);
   });
 
+  it('names this device in Spotify Connect', async () => {
+    render(<SettingsPage />, { wrapper: MemoryRouter });
+    await userEvent.type(
+      screen.getByRole('textbox', { name: 'Device name' }),
+      "Ale's iPhone",
+    );
+    expect(useSettings.getState().deviceName).toBe("Ale's iPhone");
+    expect(
+      screen.getByText(/In Spotify Connect: “Spoticast \(Ale's iPhone\)”/),
+    ).toHaveTextContent('It changes the next time you open the app.');
+    act(() => useSettings.setState({ deviceName: '' }));
+  });
+
   it('logs out', async () => {
     useAuth.setState({
       tokens: { accessToken: 'a', refreshToken: 'r', expiresAt: 0, scope: '' },

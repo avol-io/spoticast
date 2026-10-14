@@ -49,7 +49,6 @@ import {
   syncNextArchived,
   type ArchiveSyncDeps,
 } from '../archive/archive-sync';
-import { IS_BETA } from '../../lib/build-info';
 import {
   diag,
   type DiagData,
@@ -58,8 +57,7 @@ import {
   shortName,
 } from '../../lib/diagnostics/log';
 import { loadPlaybackSdk } from './sdk';
-
-export const LOCAL_DEVICE_NAME = IS_BETA ? 'Spoticast Beta' : 'Spoticast';
+import { localDeviceName } from '../../lib/device-name';
 
 let player: Spotify.Player | null = null;
 let lastFinished: { uri: string; at: number } | null = null;
@@ -210,8 +208,11 @@ export async function initPlayer() {
     return;
   }
 
+  // Fixed for the session: a new name applies at the next start.
+  const name = localDeviceName(useSettings.getState().deviceName);
+  usePlayer.setState({ localDeviceName: name });
   const instance = new window.Spotify.Player({
-    name: LOCAL_DEVICE_NAME,
+    name,
     getOAuthToken: (cb) => void getAccessToken().then(cb, () => undefined),
     volume: 1,
   });
@@ -237,10 +238,7 @@ export async function initPlayer() {
   instance.addListener('player_state_changed', (state) => {
     const { localDeviceId, nowPlaying } = usePlayer.getState();
     if (state && localDeviceId) {
-      setNowPlaying(
-        fromSdkState(state, localDeviceId, LOCAL_DEVICE_NAME),
-        'sdk',
-      );
+      setNowPlaying(fromSdkState(state, localDeviceId, name), 'sdk');
     } else if (nowPlaying?.isLocal) {
       diag('sdk', 'state lost', { hasState: !!state });
       // Playback left this browser: find out where it went.
